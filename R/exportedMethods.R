@@ -951,7 +951,7 @@ unmakeMemoisable.default <- function(x) {
     attrsOrig[["tags"]] <- newList
   }
   if (!is.null(attrsOrig)) {
-    for (tt in intersect(names(attrsOrig), c(".Cache", "tags", "call")))
+    for (tt in intersect(names(attrsOrig), c(".Cache", "tags", callInCache)))
       attr(obj, tt) <- attrsOrig[[tt]]
   }
   obj
@@ -1019,12 +1019,12 @@ unmakeMemoisable.default <- function(x) {
 
     attr(obj, "tags") <- atts$tags
     obj <- .setSubAttrInList(obj, ".Cache", "newCache", atts$.Cache$newCache)
-    attr(obj, "call") <- atts$call
+    attr(obj, callInCache) <- atts$call
 
     if (!identical(attr(obj, ".Cache")$newCache, atts$.Cache$newCache)) {
       stop("attributes are not correct 6")
     }
-    if (!identical(attr(obj, "call"), atts$call)) {
+    if (!identical(attr(obj, callInCache), atts$call)) {
       stop("attributes are not correct 7")
     }
     if (!identical(attr(obj, "tags"), atts$tags)) {
