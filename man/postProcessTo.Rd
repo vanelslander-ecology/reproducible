@@ -253,6 +253,7 @@ if (require("terra", quietly = TRUE)) {
   # need 2 SpatRaster
   rf <- system.file("ex/elev.tif", package = "terra")
   elev1 <- terra::rast(rf)
+  
   ras2 <- terra::deepcopy(elev1)
   ras2[ras2 > 200 & ras2 < 300] <- NA_integer_
   terra::values(elev1) <- rep(1L, terra::ncell(ras2))
