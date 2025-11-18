@@ -13,17 +13,16 @@ test_that("prepInputs doesn't work (part 1)", {
   withr::local_options(reproducible.cachePath = tmpdir)
 
   globalNoisy <- capture.output({
-    # Add a study area to Crop and Mask to
-    # Create a "study area"
-    coords <- structure(c(-122.98, -116.1, -99.2, -106, -122.98, 59.9, 65.73, 63.58, 54.79, 59.9),
-                        .Dim = c(5L, 2L)
+    ## Add a study area to Crop and Mask to
+    coords <- structure(
+      c(-122.98, -116.1, -99.2, -106, -122.98, 59.9, 65.73, 63.58, 54.79, 59.9),
+      .Dim = c(5L, 2L)
     )
     StudyArea <- terra::vect(coords, "polygons")
     terra::crs(StudyArea) <- crsToUse
 
     dPath <- file.path(tmpdir, "ecozones")
 
-    ### url
     url <- "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
 
     mess <- capture_messages({
@@ -33,11 +32,12 @@ test_that("prepInputs doesn't work (part 1)", {
     expect_true(any(grepl(mess, pattern = "Appending")))
     expect_true(is(shpEcozone, vectorType()))
 
-
     # test sf::st_read vs "sf::st_read" -- sf::st_read didn't work before Oc 29, 2024
-    out <- prepInputs(targetFile = "Ecozones/ecozones.shp",
-                      destinationPath = dPath,
-                      fun = sf::st_read)
+    out <- prepInputs(
+      targetFile = "Ecozones/ecozones.shp",
+      destinationPath = dPath,
+      fun = sf::st_read
+    )
     expect_is(out, "sf")
 
     # Robust to partial file deletions:
@@ -256,8 +256,9 @@ test_that("interactive prepInputs", {
     expect_true(inherits(outsideModule[[1]], rasterType()))
     expect_true(inherits(outsideModule[[2]], rasterType()))
     # expect_true(inherits(terra::crs(outsideModule[[2]]), "CRS"))
-    if (requireNamespace("sf"))
+    if (requireNamespace("sf")) {
       expect_true(inherits(sf::st_crs(outsideModule[[1]]), "crs"))
+    }
     expect_false(identical(outsideModule[[1]], outsideModule[[2]]))
 
     # remove the .prj files -- test "similar"
@@ -265,12 +266,14 @@ test_that("interactive prepInputs", {
     ### url, targetFile, archive, alsoExtract similar
     file.remove(grep(
       pattern = "asc|zip|CHECK",
-      invert = TRUE, value = TRUE,
+      invert = TRUE,
+      value = TRUE,
       dir(tmpdir, full.names = TRUE)[!isDirectory(dir(tmpdir))]
     ))
 
     outsideModule <- Map(
-      x = birdSpecies, url = urls,
+      x = birdSpecies,
+      url = urls,
       MoreArgs = list(tmpdir = tmpdir),
       function(x, url, tmpdir, purge) {
         ras <- prepInputs(
@@ -294,7 +297,8 @@ test_that("interactive prepInputs", {
     # remove the .prj files -- test "similar"
     file.remove(grep(
       pattern = "asc|zip|CHECK",
-      invert = TRUE, value = TRUE,
+      invert = TRUE,
+      value = TRUE,
       dir(tmpdir, full.names = TRUE)[!isDirectory(dir(tmpdir))]
     ))
 
@@ -302,7 +306,8 @@ test_that("interactive prepInputs", {
     ### url, targetFile, archive, alsoExtract NA
     # because alsoExtract is NA ... no other files are unzipped, so no .prj and so no CRS
     outsideModule <- Map(
-      x = birdSpecies, url = urls,
+      x = birdSpecies,
+      url = urls,
       MoreArgs = list(tmpdir = tmpdir),
       function(x, url, tmpdir, purge) {
         ras <- prepInputs(
@@ -319,9 +324,7 @@ test_that("interactive prepInputs", {
     expect_true(inherits(outsideModule[[2]], rasterType()))
     expect_false(identical(terra::crs(outsideModule[[1]]), "")) # now with subfolders & all files, has crs
     expect_false(identical(outsideModule[[1]], outsideModule[[2]]))
- })
-
-
+  })
 })
 
 test_that("preProcess doesn't work", {
@@ -342,7 +345,6 @@ test_that("preProcess doesn't work", {
 
   # Note urlShapefiles1Zip, urlShapefilesZip, and urlTif1 are in helper-allEqual.R
   globalNoisy <- capture.output({
-
     # # # # # Comment
     # # # url
     # # # # # Comment
@@ -1358,7 +1360,6 @@ test_that("lightweight tests for code coverage", {
     filesForShp2 <- dir(file.path(tmpCache), pattern = "ecozones", full.names = TRUE)
     if (.requireNamespace("sf")) {
       shpFile <- sf::st_read(grep(filesForShp2, pattern = "\\.shp", value = TRUE))
-
     }
     # Test when wrong archive exists, wrong checkSums
     expect_true(file.remove(file.path(tmpdir, "ecozone_shp.zip")))
@@ -1494,12 +1495,12 @@ test_that("lightweight tests 2 for code coverage", {
   saveRDS(a, file = theRDSFile)
   origWD <- setwd(dirname(theRDSFile))
   #noisyOutput <- capture_output(
-    zip(zipfile = theZipFile, files = basename(theRDSFile), flags="-q")
-    #)
+  zip(zipfile = theZipFile, files = basename(theRDSFile), flags = "-q")
+  #)
   #noisyOutput <- capture.output(
-    zip(zipfile = theZipFile2, files = basename(theZipFile), flags="-q")#)
+  zip(zipfile = theZipFile2, files = basename(theZipFile), flags = "-q") #)
   #noisyOutput <- capture.output(
-    zip(zipfile = theZipFile3, files = basename(theZipFile2), flags="-q")#)
+  zip(zipfile = theZipFile3, files = basename(theZipFile2), flags = "-q") #)
   setwd(origWD)
   expect_error(extractFromArchive(theZapFile), "Archives of type zap are not currently supported")
 
@@ -1633,7 +1634,8 @@ test_that("options inputPaths", {
       level = if (useGADM) 0 else NULL,
       path = if (useGADM) tmpdir else NULL,
       destinationPath = tmpCache,
-      getDataFn = dlFun1, verbose = 2
+      getDataFn = dlFun1,
+      verbose = 2
     )
   })
   expect_true(sum(grepl(paste0("Hardlinked", ".*:"), mess1)) == 1)
@@ -1652,7 +1654,8 @@ test_that("options inputPaths", {
       country = if (useGADM) "LUX" else NULL,
       level = if (useGADM) 0 else NULL,
       path = if (useGADM) tmpdir else NULL,
-      destinationPath = tmpdir3, verbose = 2
+      destinationPath = tmpdir3,
+      verbose = 2
     )
   })
   expect_true(sum(grepl(paste0(hardlinkOrSymlinkMessagePrefixForGrep), mess1)) == 1)
@@ -1688,9 +1691,11 @@ test_that("options inputPaths", {
           country = country_2,
           level = level_2,
           path = path_2,
-          destinationPath = tmpdir1, verbose = 3
+          destinationPath = tmpdir1,
+          verbose = 3
         )
-      }))
+      })
+    )
 
     mess1 <- gsub("\n    ", " ", mess1) ## remove misc new lines
     expect_true(sum(grepl(paste0(hardlinkOrSymlinkMessagePrefixForGrep), mess1)) == 1)
@@ -1785,8 +1790,10 @@ test_that("options inputPaths", {
         name = name_2,
         country = country_2,
         level = level_2,
-        path = path_2, overwrite = TRUE,
-        destinationPath = tmpdir2, verbose = 2
+        path = path_2,
+        overwrite = TRUE,
+        destinationPath = tmpdir2,
+        verbose = 2
       )
     })
     # expect_true(sum(grepl(hardlinkOrSymlinkMessagePrefixForGrep, mess1)) == 1) # used a linked version
@@ -1875,12 +1882,13 @@ test_that("rasters aren't properly resampled", {
     b <- terra::writeRaster(b, filename = tiftemp2, datatype = "INT2U")
   }) ## TODO: temporary GDAL>6
 
-
   # Test bilinear --> but keeps integer if it is integer
   suppressWarnings({
     out2 <- prepInputs(
-      targetFile = tiftemp1, rasterToMatch = terra::rast(tiftemp2),
-      destinationPath = dirname(tiftemp1), method = "bilinear",
+      targetFile = tiftemp1,
+      rasterToMatch = terra::rast(tiftemp2),
+      destinationPath = dirname(tiftemp1),
+      method = "bilinear",
       datatype = "INT2S",
       writeTo = tempfile(tmpdir = tmpdir, fileext = ".tif")
     )
@@ -1896,7 +1904,8 @@ test_that("rasters aren't properly resampled", {
     suppressWarningsSpecific(terra::writeRaster(rrr1, filename = tiftemp3), proj6Warn)
 
     out3 <- prepInputs(
-      targetFile = tiftemp3, rasterToMatch = terra::rast(tiftemp2),
+      targetFile = tiftemp3,
+      rasterToMatch = terra::rast(tiftemp2),
       destinationPath = dirname(tiftemp3),
       writeTo = tempfile(tmpdir = tmpdir, fileext = ".tif")
     )
@@ -2041,16 +2050,20 @@ test_that("test prepInputs url when a gdrive directory", {
     withr::local_dir(tmpdir)
     dPath <- "."
     url <- "https://drive.google.com/drive/u/3/folders/1q3aosWJ_THpgEaDzchvCWLMwT91pD9Fs"
-    a <- prepInputs(url = url, fun = quote({
-      tfp <- sort(targetFilePath)
-      b <- terra::rast(tfp)
-      names(b) <- basename(tfp)
-      b
-    }), destinationPath = dPath) |> Cache()
+    a <- prepInputs(
+      url = url,
+      fun = quote({
+        tfp <- sort(targetFilePath)
+        b <- terra::rast(tfp)
+        names(b) <- basename(tfp)
+        b
+      }),
+      destinationPath = dPath
+    ) |>
+      Cache()
 
     expect_is(a, "SpatRaster")
     expect_true(terra::nlyr(a) > 1)
-
   })
 })
 
@@ -2069,4 +2082,3 @@ test_that("test prepInputs with zip file with hidden files", {
   b <- prepInputs(targetFile = theFile, archive = zipFilename, fun = NA)
   expect_true(file.exists(file = theFile))
 })
-
