@@ -939,7 +939,7 @@ unmakeMemoisable.default <- function(x) {
   obj <- lapply(obj, function(objj, ...) {
     .wrap(objj, ...)
   }, preDigest = preDigest, cachePath = cachePath, drv = drv,
-                conn = conn, verbose = verbose, cacheId = cacheId, ...)
+     conn = conn, verbose = verbose, cacheId = cacheId, ...)
   hasTagAttr <- lapply(obj, function(x) attr(x, "tags"))
   tagAttr <- unname(unlist(hasTagAttr)) # this removed name
   if (length(tagAttr)) {
