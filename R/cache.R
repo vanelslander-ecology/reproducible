@@ -2572,11 +2572,11 @@ spatVectorNamesForCache <- c("x", "type", "atts", "crs")
 addCacheAttr <- function(output, .CacheIsNew, outputHash, FUN) {
   output <- .setSubAttrInList(output, ".Cache", "newCache", .CacheIsNew)
   attr(output, "tags") <- paste0("cacheId:", outputHash)
-  attr(output, "call") <- ""
+  attr(output, callInCache) <- ""
   if (!identical(attr(output, ".Cache")$newCache, .CacheIsNew)) {
     stop("attributes are not correct 3")
   }
-  if (!identical(attr(output, "call"), "")) {
+  if (!identical(attr(output, callInCache), "")) {
     stop("attributes are not correct 4")
   }
   if (!identical(attr(output, "tags"), paste0("cacheId:", outputHash))) {
@@ -2788,3 +2788,4 @@ getPreviousEntryInCache <- function(.functionName, verbose, data.table, setorder
   }
 }
 
+callInCache <- "callInCache"

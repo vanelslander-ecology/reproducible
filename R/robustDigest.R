@@ -537,8 +537,8 @@ basenames3 <- function(object, nParentDirs) {
   if (!is.null(attr(x, ".Cache"))) {
     attr(x, ".Cache") <- NULL
   }
-  if (!is.null(attr(x, "call"))) {
-    attr(x, "call") <- NULL
+  if (!is.null(attr(x, callInCache))) {
+    attr(x, callInCache) <- NULL
   }
   x
 }
@@ -563,7 +563,7 @@ basenames3 <- function(object, nParentDirs) {
     }
   }
 
-  for (i in c("tags", ".Cache", "call")) {
+  for (i in c("tags", ".Cache", callInCache)) {
     if (!is.null(attr(from, i))) {
       attr(to, i) <- attr(from, i)
     }

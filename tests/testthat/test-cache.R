@@ -2120,3 +2120,14 @@ test_that("cacheChaining", {
   }
 
 })
+
+test_that("Cache with weird dots", {
+  testInit()
+  a <- as.data.frame(list(1, 2), F, F, a = 2, rr = 23) |> Cache()
+  b <- as.data.frame(list(1, 2), F, F, a = 2, rr = 23) |> Cache()
+  d <- as.data.frame(list(1, 2), F, F, a = 3, rr = 23) |> Cache()
+  expect_true(attr(a, ".Cache")$newCache)
+  expect_false(attr(b, ".Cache")$newCache)
+  expect_true(attr(d, ".Cache")$newCache)
+
+})
