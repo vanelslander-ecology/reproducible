@@ -3,9 +3,9 @@ test_that("prepInputs doesn't work (part 1)", {
   skip_on_ci()
 
   testInit("terra", opts = list(
-    "rasterTmpDir" = tempdir2(rndstr(1, 6)),
-    "reproducible.inputPaths" = NULL,
-    "reproducible.overwrite" = TRUE,
+    rasterTmpDir = tempdir2(rndstr(1, 6)),
+    reproducible.inputPaths = NULL,
+    reproducible.overwrite = TRUE,
     reproducible.useMemoise = FALSE,
     reproducible.showSimilar = TRUE
   ), needInternet = TRUE)
@@ -151,9 +151,9 @@ test_that("prepInputs doesn't work (part 1)", {
     expect_false(exists("shpEcozone", inherits = FALSE))
 
     ### url, alsoExtract, archive
-    # try again with url - should *not* download, even though checksums came from the
-    #   prepInputs that had locally generated -- confirming that checksums with a manually copied file will work
-    #   instead of forcing prepInputs to get the file.
+    ## try again with url - should *not* download, even though checksums came from the
+    ##   prepInputs that had locally generated -- confirming that checksums with a manually copied file will work
+    ##   instead of forcing prepInputs to get the file.
     shpEcozone <- prepInputs(
       destinationPath = dPath,
       url = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip",
@@ -165,7 +165,7 @@ test_that("prepInputs doesn't work (part 1)", {
     )
     expect_true(is(shpEcozone, vectorType()))
 
-    #stops if deprecated arguments used
+    ## stops if deprecated arguments used
     expect_error(prepInputs(destinationPath = dPath,
                             url = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip",
                             archive = file.path(dPath, "ecozone_shp.zip"),
@@ -181,9 +181,9 @@ test_that("interactive prepInputs", {
 
   testInit("terra",
            opts = list(
-             "rasterTmpDir" = tempdir2(rndstr(1, 6)),
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             rasterTmpDir = tempdir2(rndstr(1, 6)),
+             reproducible.overwrite = TRUE,
+             reproducible.inputPaths = NULL
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -226,8 +226,8 @@ test_that("interactive prepInputs", {
     # From Bird/Tati project
     testInit("terra",
              opts = list(
-               "reproducible.overwrite" = TRUE,
-               "reproducible.inputPaths" = NULL
+               reproducible.inputPaths = NULL,
+               reproducible.overwrite = TRUE
              ),
              needGoogleDriveAuth = TRUE
     )
@@ -334,8 +334,8 @@ test_that("preProcess doesn't work", {
 
   testInit("terra",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -1124,10 +1124,10 @@ test_that("prepInputs when fun = NA", {
   skip_if_not(getRversion() > "3.3.0")
 
   testInit(c("sf", "terra"), opts = list(
-    "rasterTmpDir" = tempdir2(rndstr(1, 6)),
-    "reproducible.overwrite" = TRUE,
+    rasterTmpDir = tempdir2(rndstr(1, 6)),
     reproducible.interactiveOnDownloadFail = FALSE,
-    "reproducible.inputPaths" = NULL
+    reproducible.inputPaths = NULL,
+    reproducible.overwrite = TRUE
   ), needGoogleDriveAuth = TRUE)
 
   globalNoisy <- capture.output({
@@ -1178,8 +1178,8 @@ test_that("load rdata in prepInputs", {
   testInit("terra",
            tmpFileExt = "rda",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ), needGoogleDriveAuth = TRUE
   )
   a <- 1
@@ -1196,8 +1196,8 @@ test_that("load rdata in prepInputs", {
 
 test_that("assessDataType doesn't work", {
   testInit("terra", opts = list(
-    "reproducible.overwrite" = TRUE,
-    "reproducible.inputPaths" = NULL
+    reproducible.inputPaths = NULL,
+    reproducible.overwrite = TRUE
   ), needGoogleDriveAuth = TRUE)
 
   ## LOG1S
@@ -1315,8 +1315,8 @@ test_that("lightweight tests for code coverage", {
 
   testInit(c("sf", "terra"),
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -1479,8 +1479,8 @@ test_that("lightweight tests 2 for code coverage", {
 
   testInit("terra",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -1560,8 +1560,8 @@ test_that("options inputPaths", {
 
   testInit(c("terra", "geodata"),
            opts = list(
-             "reproducible.inputPaths" = NULL,
-             "reproducible.inputPathsRecursive" = FALSE
+             reproducible.inputPaths = NULL,
+             reproducible.inputPathsRecursive = FALSE
            ),
            needInternet = TRUE
   )
@@ -1706,8 +1706,8 @@ test_that("options inputPaths", {
     ## Try download to inputPath, intercepting the destination, creating a link
     testInit("terra",
              opts = list(
-               "reproducible.inputPaths" = NULL,
-               "reproducible.inputPathsRecursive" = FALSE
+               reproducible.inputPaths = NULL,
+               reproducible.inputPathsRecursive = FALSE
              )
     )
 
@@ -1840,8 +1840,8 @@ test_that("writeOutputs saves factor rasters with .grd class to preserve levels"
 
   testInit("terra",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -1864,8 +1864,8 @@ test_that("rasters aren't properly resampled", {
 
   testInit("terra",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            ),
            needGoogleDriveAuth = TRUE
   )
@@ -1995,8 +1995,8 @@ test_that("test prepInputs url when a directory", {
 
   testInit("terra",
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            )
   )
   withr::local_options(destinationPath = tmpdir)
@@ -2039,8 +2039,8 @@ test_that("test prepInputs url when a gdrive directory", {
 
   testInit(c("terra", "googledrive"),
            opts = list(
-             "reproducible.overwrite" = TRUE,
-             "reproducible.inputPaths" = NULL
+             reproducible.inputPaths = NULL,
+             reproducible.overwrite = TRUE
            )
   )
   withr::local_options(destinationPath = tmpdir)
