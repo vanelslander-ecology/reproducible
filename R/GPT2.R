@@ -77,8 +77,9 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
 
   if (is.null(cacheId) || is.na(cacheId)) {
     if (!is.null(.cacheChaining) && !.cacheChaining %in% FALSE) {
+      browser()
       chainingList <- cacheChainingSetup(.cacheChaining, callList, omitArgs, .cacheExtra, verbose)
-      list2env(chainingList, envir = environment())
+      list2env(chainingList, envir = environment()) # puts .cacheExtra into the envir with an extra piece --> bad
     }
     toDigest <- doDigestPrepare(callList$new_call, omitArgs, .cacheExtra)
     keyFull <- try(doDigest(toDigest, callList$.functionName, .objects,
@@ -570,10 +571,35 @@ get_function_defaults <- function(func) {
 # Helper function to reorder arguments based on formal arguments, combining defaults and user args
 reorder_arguments <- function(formals, args) {
   # Combine defaults and args: user args override defaults
-  combined_args <- modifyList(formals, args, keep.null = TRUE)
 
+  areDots <- names(args) %in% "..."
+  if (any(areDots)) {
+    args2 <- args
+    args2[[which(areDots)]] <- NULL
+    args <- append(args2, args[[which(areDots)]])
+  }
+
+
+  combined_args <- modifyList(formals, args, keep.null = TRUE)
+  areDots <- names(combined_args) %in% "..."
+  if (any(areDots)) {
+
+    argPlaceInsert <- which(!names(args) %in% names(formals))
+
+    needArgs <- !names(args) %in% names(combined_args)
+    combined_args[areDots] <- NULL
+    combined_args <- append(combined_args, args[needArgs])
+    areDots2 <- names(formals) %in% "..."
+    whNotDots <- which(!areDots2)
+    whDots <- which(areDots2)
+    first <- if (whDots > 1) seq(whDots - 1) else numeric()
+    anySeconds <- !whDots > whNotDots
+    second <- if (any(anySeconds)) whNotDots[anySeconds] else numeric()
+    ordered_args <- c(combined_args[first], args[argPlaceInsert], formals[second])
+  } else {
+    ordered_args <- combined_args[union(names(formals), names(combined_args))]
+  }
   # Preserve the order of the formals
-  ordered_args <- combined_args[union(names(formals), names(combined_args))]
 
   return(ordered_args)
 }
@@ -1074,7 +1100,6 @@ showSimilar <- function(cachePath, metadata, .functionName, userTags, useCache,
       messageCache("with different elements (most recent at top):", verbose = verbose)
       # don't add a prefix if there is no `sim` in the stack
       prefix <- if (identical(.GlobalEnv, whereInStack("sim"))) "" else .message$NoPrefix
-      # if (exists("aaaa", envir = .GlobalEnv)) browser()
       messageCache(.message$dashes, prefix)
       lala <- Map(si = simi, nam = names(simi), function(si, nam) {
         messageCache(paste0("Compared to cacheId: ", nam, prefix), verbose = verbose)
@@ -1756,8 +1781,12 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, .cacheExtra, 
   if (.cacheChaining %in% TRUE) {
     .cacheChaining <- sys.function(-2)
   }
+  bb <- attr(callList$new_call, ".Cache")
+  hasCacheTags <- lapply(bb$args_w_defaults, function(y) attr(y, "tags")) |> unlist()
   cfdig <- .robustDigest(.cacheChaining)
   cfdigList <- list(cacheChaining = cfdig)
+  if (isTRUE(any(hasCacheTags))) {
+
   cfdigInList <- .robustDigest(cfdigList)
   if (is.null(.pkgEnv[["cacheChaining"]])) {
     .pkgEnv$cacheChaining <- new.env(parent = emptyenv())
@@ -1769,8 +1798,8 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, .cacheExtra, 
   }
 
   if (length(cids)) {
-    bb <- attr(callList$new_call, ".Cache")
-    hasCacheTags <- lapply(bb$args_w_defaults, function(y) attr(y, "tags")) |> unlist()
+    # bb <- attr(callList$new_call, ".Cache")
+    # hasCacheTags <- lapply(bb$args_w_defaults, function(y) attr(y, "tags")) |> unlist()
 
     # The function being assessed has to assess objects that were created within this same function;
     #   otherwise they could be from a Cache outside this function
@@ -1799,7 +1828,12 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, .cacheExtra, 
     messageCache("Using cacheChaining; but .cacheChaining has changed or ",
                  "this is the first call in the .cacheChaining; starting a new chain")
   }
-  .cacheExtra <- append(.cacheExtra, cfdigList)
+  } else {
+    messageCache("Using cacheChaining; but .cacheChaining has changed or ",
+                 "this is the first call in the ", gsub("\"", "", format(.cacheChaining)),
+                 "; starting a new chain")
+  }
+  # .cacheExtra <- append(.cacheExtra, cfdigList)
 
   list(.cacheExtra = .cacheExtra, omitArgs = omitArgs)
 }
