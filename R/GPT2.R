@@ -74,16 +74,15 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
       cacheId <- NULL
   }
 
-
   if (is.null(cacheId) || is.na(cacheId)) {
-    if (!is.null(.cacheChaining) && !.cacheChaining %in% FALSE) {
-      chainingList <- cacheChainingSetup(.cacheChaining, callList, omitArgs, .cacheExtra, verbose)
-      list2env(chainingList, envir = environment())
-    }
-    toDigest <- doDigestPrepare(callList$new_call, omitArgs, .cacheExtra)
+    cacheChainDetails <- cacheChainingSetup(.cacheChaining, callList, omitArgs, verbose)
+    toDigest <- doDigestPrepare(callList$new_call, cacheChainDetails$omitArgs, .cacheExtra)
     keyFull <- try(doDigest(toDigest, callList$.functionName, .objects,
-                       length, algo, quick, classOptions, times$CacheDigestStart,
-                       verbose = verbose))
+                            length, algo, quick, classOptions, times$CacheDigestStart,
+                            verbose = verbose))
+    # update with cacheChain info
+    keyFull <- cacheChainingStep(keyFull, callList, .cacheChaining, cacheChainDetails, cachePaths)
+
     if (is(keyFull, "try-error")) {
       stopRcppError(toDigest, .objects, length, algo, quick, classOptions)
     }
@@ -104,11 +103,12 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
 
   # Memoise and return if it is there #
   if (!dryRun) {
-    outputFromMemoise <- check_and_get_memoised_copy(keyFull$key, cachePaths, callList$.functionName,
+    outputFromMemoise <- check_and_get_memoised_copy(keyFull, cachePaths, callList$.functionName,
                                                      callList$func, useCache, useCloud,
                                                      cloudFolderID, gdriveLs, full_call = callList$new_call,
                                                      outputObjects = outputObjects,
                                                      cacheSaveFormat = cacheSaveFormat,
+                                                     .cacheChaining = .cacheChaining,
                                                      drv = drv, conn = conn, verbose = verbose)
     if (!identical2(.returnNothing, outputFromMemoise))
       return(outputFromMemoise)
@@ -129,11 +129,12 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
     }
 
     # Check if keyFull$key is on disk and return if it is there
-    outputFromDisk <- check_and_get_cached_copy(keyFull$key, cachePaths, cache_file, callList$.functionName, callList$func,
+    outputFromDisk <- check_and_get_cached_copy(keyFull, cachePaths, cache_file, callList$.functionName, callList$func,
                                                 useCache, useCloud, cloudFolderID, gdriveLs,
                                                 full_call = callList$new_call,
                                                 outputObjects = outputObjects,
                                                 cacheSaveFormat = cacheSaveFormat,
+                                                .cacheChaining = .cacheChaining,
                                                 drv, conn, verbose = verbose)
 
     if (!identical2(.returnNothing, outputFromDisk))
@@ -152,11 +153,12 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
     newFileName <- gdriveLs$name[which(keyInGdriveLs(keyFull$key, gdriveLs))] # paste0(outputHash,".rda")
     shownCache <- cloudDownload(keyFull$key, newFileName, gdriveLs, cachePaths[[1]], cloudFolderID,
                                 drv = drv, conn = conn, verbose = verbose)
-    outputFromDisk <- check_and_get_cached_copy(keyFull$key, cachePaths, cache_file, callList$.functionName, callList$func,
+    outputFromDisk <- check_and_get_cached_copy(keyFull, cachePaths, cache_file, callList$.functionName, callList$func,
                                                 useCache, useCloud = FALSE, cloudFolderID, gdriveLs,
                                                 full_call = callList$new_call,
                                                 outputObjects = outputObjects,
                                                 cacheSaveFormat = cacheSaveFormat,
+                                                .cacheChaining = .cacheChaining,
                                                 drv, conn, verbose = verbose)
     return(outputFromDisk)
   } # Derive some metadata prior to evaluation so "showSimilar" can have something to compare with
@@ -191,12 +193,13 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
                                        userTags, .objects, length, algo, quick,
                                        classOptions, elapsedTimeFUN)
 
-  outputFromEvaluate <- doSaveToCache(outputFromEvaluate, metadata, cachePaths, callList$func,
+  outputFromEvaluate <- doSaveToCache(outputFromEvaluate, metadata, cachePaths, callList = callList, # callList$func,
                                       .objects, length, algo, quick, classOptions,
-                                      cache_file, userTags, callList$.functionName, debugCache,
+                                      cache_file, userTags, # callList$.functionName,
+                                      debugCache,
                                       keyFull, outputObjects = outputObjects,
                                       useCloud, cloudFolderID, gdriveLs,
-                                      func_call = callList$func_call,
+                                      # func_call = callList$func_call,
                                       cacheSaveFormat = cacheSaveFormat, drv = drv, conn = conn,
                                       useMemoise = getOption("reproducible.useMemoise", FALSE),
                                       .cacheChaining = .cacheChaining,
@@ -209,11 +212,12 @@ Cache <- function(FUN, ..., dryRun = getOption("reproducible.dryRun", FALSE),
     times$SavePreDigestStart <- Sys.time()
     locked <- lockFile(cachePaths[[1]], keyFullPreDigest$key, verbose = verbose)
 
-    toDigestOut <- doSaveToCache(toDigest, metadata, cachePaths, callList$func,
+    toDigestOut <- doSaveToCache(toDigest, metadata, cachePaths, callList = callList, # callList$func,
                                  .objects, length, algo, quick, classOptions,
-                                 cache_file, userTags, callList$.functionName, debugCache,
+                                 cache_file, userTags, # callList$.functionName,
+                                 debugCache,
                                  keyFullPreDigest, outputObjects = outputObjects,
-                                 func_call = callList$func_call,
+                                 # func_call = callList$func_call,
                                  cacheSaveFormat = cacheSaveFormat,
                                  drv = drv, conn = conn,
                                  useCloud = FALSE, # not this preDigest one
@@ -374,11 +378,13 @@ evaluate_args <- function(args, envir) {
   })
 }
 
-check_and_get_cached_copy <- function(cache_key, cachePaths, cache_file, functionName,
+check_and_get_cached_copy <- function(detailed_key, cachePaths, cache_file, functionName,
                                       func, useCache, useCloud, cloudFolderID, gdriveLs,
                                       full_call, outputObjects,
                                       cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
+                                      .cacheChaining = getOption("reproducible.cacheChaining", FALSE),
                                       drv, conn, envir = parent.frame(), verbose) {
+  cache_key <- detailed_key$key
   # Check if the result is already cached
   connOrig <- conn
   conns <- conn
@@ -439,12 +445,13 @@ check_and_get_cached_copy <- function(cache_key, cachePaths, cache_file, functio
     output <- loadFromDiskOrMemoise(fromMemoise = FALSE, useCache, useCloud,
                                     cloudFolderID = cloudFolderID, gdriveLs = gdriveLs,
                                     cachePath = cachePath,
-                                    cache_key, functionName, cache_file = cache_file,
+                                    detailed_key, functionName, cache_file = cache_file,
                                     changedSaveFormat = changedSaveFormat, sameCacheID,
                                     cache_file_orig, func, shownCache = shownCache,
                                     full_call = full_call,
                                     outputObjects = outputObjects,
                                     cacheSaveFormat = cacheSaveFormat,
+                                    .cacheChaining = .cacheChaining,
                                     drv = drv, conn = conn, verbose = verbose)
     return(output)
 
@@ -485,11 +492,13 @@ metadata_update <- function(outputToSave, metadata, cache_key) {
   metadata
 }
 
-check_and_get_memoised_copy <- function(cache_key, cachePaths, functionName, func,
+check_and_get_memoised_copy <- function(detailed_key, cachePaths, functionName, func,
                                         useCache, useCloud, cloudFolderID, gdriveLs,
                                         full_call, outputObjects,
                                         cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
+                                        .cacheChaining = getOption("reproducible.cacheChaining", FALSE),
                                         drv, conn, verbose) {
+  cache_key <- detailed_key$key
   if (getOption("reproducible.useMemoise", FALSE)) {
     for (cachePath in cachePaths) {
       cache_key_in_memoiseEnv <- exists(cache_key, envir = memoiseEnv(cachePath), inherits = FALSE)
@@ -500,12 +509,13 @@ check_and_get_memoised_copy <- function(cache_key, cachePaths, functionName, fun
     if (cache_key_in_memoiseEnv) {
       output <- loadFromDiskOrMemoise(fromMemoise = TRUE, useCache = useCache, useCloud = useCloud,
                                       cloudFolderID = cloudFolderID, gdriveLs = gdriveLs,
-                                      cachePath = cachePath, cache_key = cache_key,
+                                      cachePath = cachePath, detailed_key = detailed_key,
                                       functionName = functionName, func = func,
                                       full_call = full_call,
                                       changedSaveFormat = FALSE,
                                       outputObjects = outputObjects,
                                       cacheSaveFormat = cacheSaveFormat,
+                                      .cacheChaining = .cacheChaining,
                                       drv = drv, conn = conn, verbose = verbose,
                                       )
       return(output)
@@ -1074,7 +1084,6 @@ showSimilar <- function(cachePath, metadata, .functionName, userTags, useCache,
       messageCache("with different elements (most recent at top):", verbose = verbose)
       # don't add a prefix if there is no `sim` in the stack
       prefix <- if (identical(.GlobalEnv, whereInStack("sim"))) "" else .message$NoPrefix
-      # if (exists("aaaa", envir = .GlobalEnv)) browser()
       messageCache(.message$dashes, prefix)
       lala <- Map(si = simi, nam = names(simi), function(si, nam) {
         messageCache(paste0("Compared to cacheId: ", nam, prefix), verbose = verbose)
@@ -1104,7 +1113,7 @@ showSimilar <- function(cachePath, metadata, .functionName, userTags, useCache,
 
 CacheDBFileCheckAndCreate <- function(cachePath, drv = NULL, conn = NULL, verbose) {
 
-  convertDBbackendIfIncorrect(cachePath, drv, conn, verbose = verbose)
+  convertDBbackendIfIncorrect(cachePath, drv, conn, verbose = verbose - 1)
 
   dbfile <- CacheDBFile(cachePath, drv = drv, conn = conn)
   if (isTRUE(!file.exists(dbfile[1])))
@@ -1150,10 +1159,12 @@ wrapSaveToCache <- function(outputFromEvaluate, metadata, cache_key, cachePath, 
   return(metadata)
 }
 
-doSaveToCache <- function(outputFromEvaluate, metadata, cachePaths, func,
+doSaveToCache <- function(outputFromEvaluate, metadata, cachePaths, callList, # func,
                           .objects, length, algo, quick, classOptions,
-                          cache_file, userTags, .functionName, debugCache,
-                          detailed_key, func_call, outputObjects,
+                          cache_file, userTags, # .functionName,
+                          debugCache,
+                          detailed_key, # func_call,
+                          outputObjects,
                           useCloud, cloudFolderID, gdriveLs,
                           cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
                           drv, conn, useMemoise = getOption("reproducible.useMemoise", FALSE),
@@ -1162,16 +1173,16 @@ doSaveToCache <- function(outputFromEvaluate, metadata, cachePaths, func,
   # Can't save NULL with attributes
   if (is.null(outputFromEvaluate)) outputFromEvaluate <- "NULL"
 
-  outputFromEvaluate <- addCacheAttr(outputFromEvaluate, .CacheIsNew = TRUE, detailed_key$key, func)
+  outputFromEvaluate <- addCacheAttr(outputFromEvaluate, .CacheIsNew = TRUE, detailed_key$key, callList$func)
 
-  if (isTRUE(.cacheChaining)) {
-    outputFromEvaluate <- cacheChainingPost(detailed_key, outputFromEvaluate)
-  }
-  # browser()
+  outputFromEvaluate <- cacheChainingPost(detailed_key, outputFromEvaluate,
+                                            attr(callList$new_call, ".Cache")[cacheChainingOuterFunctionName],
+                                            cachePaths[[1]], linkToCacheId = NULL, cacheSaveFormat,
+                                          .cacheChaining = .cacheChaining, drv, conn)
   metadata <- wrapSaveToCache(outputFromEvaluate, metadata, detailed_key$key, cachePaths[[1]],
                               # userTags = paste0(metadata$tagKey, ":", metadata$tagValue),
                               outputObjects = outputObjects,
-                              preDigest = detailed_key$preDigest, .functionName,
+                              preDigest = detailed_key$preDigest, callList$.functionName,
                               cacheSaveFormat = cacheSaveFormat, drv, conn, verbose)
 
   # Memoize the outputFromEvaluate by saving it in RAM
@@ -1183,7 +1194,7 @@ doSaveToCache <- function(outputFromEvaluate, metadata, cachePaths, func,
   if (identical(outputFromEvaluate, "NULL")) outputFromEvaluate <- NULL
 
   if (isTRUE(!is.na(pmatch(debugCache, "complete"))))
-    outputFromEvaluate <- .debugCache(outputFromEvaluate, detailed_key$preDigest, fullCall = func_call)
+    outputFromEvaluate <- .debugCache(outputFromEvaluate, detailed_key$preDigest, fullCall = callList$func_call)
 
   if (cloudWrite(useCloud)) {
     cloudUploadFromCache(detailed_key$key %in% filePathSansExt(gdriveLs[["name"]]), detailed_key$key,
@@ -1338,14 +1349,16 @@ useCacheFromNested <- function(useCache) {
 
 loadFromDiskOrMemoise <- function(fromMemoise = FALSE, useCache,
                                   useCloud, cloudFolderID = NULL, gdriveLs,
-                                  cachePath, cache_key,
+                                  cachePath, detailed_key,
                                   functionName,
                                   cache_file = NULL, changedSaveFormat, sameCacheID,
                                   cache_file_orig, func, shownCache = NULL,
                                   full_call, outputObjects,
                                   cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
+                                  .cacheChaining = getOption("reproducible.cacheChaining", FALSE),
                                   drv, conn, verbose) {
 
+  cache_key <- detailed_key$key
   if (identical(useCache, "overwrite")) {
     clearCacheOverwrite(cachePath, cache_key, functionName, drv, conn, verbose)
     return(invisible(.returnNothing))
@@ -1436,6 +1449,7 @@ loadFromDiskOrMemoise <- function(fromMemoise = FALSE, useCache,
         messageCache("It looks like the cache file is corrupt or was interrupted during write; deleting and recalculating")
         otherFiles2 <- dir(CacheStorageDir(cachePath), pattern = cache_key, full.names = TRUE)
         if (!is(shownCache, "try-error")) {
+          browser()
           otherFiles <- normPath(file.path(CacheStorageDir(cachePath),
                                            shownCache[tagKey == "filesToLoad"]$tagValue))
           otherFiles2 <- c(otherFiles, otherFiles2)
@@ -1482,6 +1496,10 @@ loadFromDiskOrMemoise <- function(fromMemoise = FALSE, useCache,
     output <- do.call(.prepareOutput, args = append(list(object = output, cachePath),
                                                     .dotsFromCache))
 
+    output <- cacheChainingPost(detailed_key, output,
+                                attr(full_call, ".Cache")[cacheChainingOuterFunctionName],
+                                cachePath, linkToCacheId = NULL, cacheSaveFormat,
+                                .cacheChaining = .cacheChaining, drv, conn)
 
     return(output)
   }
@@ -1752,66 +1770,217 @@ isSquigglyCall <- function(x) {
 }
 
 
-cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, .cacheExtra, verbose) {
-  if (.cacheChaining %in% TRUE) {
+cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, verbose) {
+  if (isTRUE(.cacheChaining %in% TRUE)) { #
     .cacheChaining <- sys.function(-2)
   }
-  cfdig <- .robustDigest(.cacheChaining)
-  cfdigList <- list(cacheChaining = cfdig)
-  cfdigInList <- .robustDigest(cfdigList)
-  if (is.null(.pkgEnv[["cacheChaining"]])) {
-    .pkgEnv$cacheChaining <- new.env(parent = emptyenv())
-  }
-  cids <- names(.pkgEnv$cacheChaining[[cfdigInList[[1]]]])
-  if (length(cids) == 0) { # not in the RAM stashing place "yet"; use normal Cache
-    sc2 <- showCache(verbose = FALSE)
-    cids <- sc2[["cacheId"]][sc2$tagValue == paste0(".cacheExtra.cacheChaining:", cfdigInList)]
-  }
+  cfdigList <- details <- preDigests <- NULL
 
-  if (length(cids)) {
+  if (useCacheChaining(.cacheChaining)) {
     bb <- attr(callList$new_call, ".Cache")
     hasCacheTags <- lapply(bb$args_w_defaults, function(y) attr(y, "tags")) |> unlist()
-
-    # The function being assessed has to assess objects that were created within this same function;
-    #   otherwise they could be from a Cache outside this function
-    wasItInThisFn <- lapply(bb$args_w_defaults, function(y) attr(y, "cacheChaining")) |> unlist()
-    wasItInThisFn <- identical(wasItInThisFn[[1]], cfdigInList[[1]])
-    if (length(hasCacheTags) && wasItInThisFn) {
-      onlyOneCid <- gsub("cacheId:", "", hasCacheTags)
-      messageCache("Using cacheChaining ...", verbose = verbose)
-
-      if (exists("sc2", inherits = FALSE)) {
-        sc3 <- sc2[cacheId %in% cids] # in case of duplicate entries
-        sc4 <- sc3[sc3$cacheId == onlyOneCid]
-        preDigests <- Map(nam = names(hasCacheTags), function(nam)
-          gsub(paste0(nam, ":"), "", grep(paste0("^[.cacheExtra:]*", nam, ":"), sc4$tagValue, value = TRUE)))
-      } else {
-        preDigests <- Map(nam = names(hasCacheTags), function(nam)
-          .pkgEnv$cacheChaining[[cfdigInList[[1]]]][[onlyOneCid]]$preDigests[[nam]])
+    cfdig <- .robustDigest(.cacheChaining)
+    cfdigList <- list(cfdig) |> setNames(cacheChainingOuterFunctionName)
+    if (length(hasCacheTags)) {
+      if (is.null(.pkgEnv[["cacheChaining"]])) {
+        .pkgEnv$cacheChaining <- new.env(parent = emptyenv())
       }
-      omitArgs <- c(omitArgs, names(hasCacheTags))
-      messageCache("Skipping digest of ", paste0(names(hasCacheTags), collapse = ", "), verbose = verbose)
-      .cacheExtra <- c(.cacheExtra, preDigests)
-    } else {
-      messageCache("Using cacheChaining; but .cacheChaining has changed; adding to new chain")
-    }
-  } else {
-    messageCache("Using cacheChaining; but .cacheChaining has changed or ",
-                 "this is the first call in the .cacheChaining; starting a new chain")
-  }
-  .cacheExtra <- append(.cacheExtra, cfdigList)
+      details <- .pkgEnv$cacheChaining[[cfdigList[[1]]]]
+      cids <- names(details)
+      if (length(cids) == 0) { # not in the RAM stashing place "yet"; use normal Cache
+        sc2 <- showCacheFast(cacheId = cfdigList[[1]])
+        cids <- sc2[["tagValue"]][sc2$tagKey == "cacheChain"]
+      }
 
-  list(.cacheExtra = .cacheExtra, omitArgs = omitArgs)
+      if (length(cids)) {
+        # The function being assessed has to assess objects that were created within this same function;
+        #   otherwise they could be from a Cache outside this function
+        wasItInThisFn <- lapply(bb$args_w_defaults, function(y) attr(y, cacheChainingOuterFunctionName)) |> unlist()
+        wasItInThisFn <- identical(wasItInThisFn[[1]], cfdigList[[1]])
+        if (length(hasCacheTags) && wasItInThisFn) {
+          onlyOneCid <- gsub("cacheId:", "", hasCacheTags)
+          messageCache("Using cacheChaining ...", verbose = verbose)
+
+          if (exists("sc2", inherits = FALSE)) {
+            onlyOneCidReal <- sc2[["cacheId"]][sc2$tagValue %in% onlyOneCid]
+            sc3 <- sc2[sc2[["cacheId"]] %in% onlyOneCidReal] # in case of duplicate entries
+            sc4 <- sc3#[sc3$tagValue == onlyOneCid]
+            preDigests <- Map(nam = names(hasCacheTags), function(nam)
+              sc4[["tagValue"]][sc4[["tagKey"]] == nam])
+            details <- as.list(sc2$tagValue[-1]) |> setNames(sc2$tagKey[-1]) |>
+              list() |> setNames("preDigests") |>
+              list() |> setNames(onlyOneCid) |>
+              as.environment()
+          } else {
+            preDigests <- Map(nam = names(hasCacheTags), function(nam)
+              .pkgEnv$cacheChaining[[cfdigList[[1]]]][[onlyOneCid]]$preDigests[[nam]])
+          }
+
+          omitArgs <- c(omitArgs, names(hasCacheTags))
+          messageCache("Skipping digest of ", paste0(names(hasCacheTags), collapse = ", "), verbose = verbose)
+          # .cacheExtra <- c(.cacheExtra, preDigests)
+        } else {
+          messageCache("Using cacheChaining; but .cacheChaining has changed; adding to new chain")
+        }
+      } else {
+        messageCache("Using cacheChaining; but .cacheChaining has changed or ",
+                     "this is the first call in the .cacheChaining; starting a new chain")
+      }
+    } else {
+      messageCache("Using cacheChaining; but .cacheChaining has changed or ",
+                   "this is the first Cached call in the function where ", .messageFunctionFn(callList$.functionName),
+                   " is being Cached; starting a new chain")
+    }
+    attr(callList$new_call, ".Cache") <- append(attr(callList$new_call, ".Cache"), cfdigList)
+
+  }
+  list(.cacheChaining = .cacheChaining,
+       preDigests = preDigests,
+       omitArgs = omitArgs,
+       callList = callList,
+       details = details,
+       cfdigList = cfdigList)
 }
 
-cacheChainingPost <- function(detailed_key, outputFromEvaluate) {
-  cacheChainingFnDigest <- detailed_key$preDigest$.cacheExtra$cacheChaining
-  attr(outputFromEvaluate, "cacheChaining") <- cacheChainingFnDigest
-  if (is.null(.pkgEnv$cacheChaining[[cacheChainingFnDigest]])) {
-    .pkgEnv$cacheChaining[[cacheChainingFnDigest]] <- new.env(parent = emptyenv())
+cacheChainingPost <- function(detailed_key, outputFromEvaluate, cacheChainingOuterFunction,
+                              cachePath, linkToCacheId, cacheSaveFormat, .cacheChaining, drv, conn) {
+  if (!isTRUE(.cacheChaining %in% FALSE)) {
+
+    dk <- detailed_key[["preDigest"]]
+    if (!is.null(detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction)) {
+      cacheChainingFnDigest <- detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction
+    } else {
+      cacheChainingFnDigest <- dk[[surroundingFunctionLabel]]
+    }
+    attr(outputFromEvaluate, cacheChainingOuterFunctionName) <- cacheChainingFnDigest
+    if (is.null(.pkgEnv$cacheChaining[[cacheChainingFnDigest]])) {
+      .pkgEnv$cacheChaining[[cacheChainingFnDigest]] <- new.env(parent = emptyenv())
+    }
+
+    dkSimple <- dk[-which(names(dk) == surroundingFunctionLabel)]
+    userTags <- paste0(names(dkSimple), ":", paste0(detailed_key$key, ":", dkSimple))
+    fil <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheChainingFnDigest)
+    needWrite <- TRUE
+    if (file.exists(fil)) {
+      tmp <- loadFile(fil)
+      userTags1 <- paste0(tmp$tagKey, ":", tmp$tagValue)
+      userTags2 <- union(userTags, userTags1)
+      if (identical(length(userTags2), length(userTags1))) {
+        needWrite <- FALSE
+      } else {
+        userTags <- userTags2
+      }
+
+    }
+    if (isTRUE(needWrite)) {
+      # This adds or updates a new entry in the cache repository about the function itself
+      fs <- saveToCache(cachePath = cachePath,
+                        obj = NULL, verbose = verbose - 1, # cache_file[1],
+                        userTags = userTags, linkToCacheId = linkToCacheId,
+                        cacheSaveFormat = cacheSaveFormat,
+                        drv = drv, conn = conn,
+                        cacheId = cacheChainingFnDigest)
+
+      assign(detailed_key$key,
+             list(preDigests = detailed_key$preDigest) ,
+             envir = .pkgEnv$cacheChaining[[cacheChainingFnDigest]])
+    }
   }
-  assign(detailed_key$key,
-         list(preDigests = detailed_key$preDigest) ,
-         envir = .pkgEnv$cacheChaining[[cacheChainingFnDigest]])
   return(outputFromEvaluate)
+}
+
+cacheChainingOuterFunctionName <- "cacheChainingOuterFunction"
+cacheChainLabel <- "cacheChain_"
+surroundingFunctionLabel <- "surroundingFunction"
+
+
+useCacheChaining <- function(.cacheChaining) {
+  first <- !is.null(.cacheChaining) && (is.function(.cacheChaining) || !.cacheChaining %in% FALSE)
+  if (isTRUE(first)) {
+    udbi <- useDBI(verbose = -2)
+    if (udbi %in% TRUE) {
+      if (is.null(.pkgEnv$cacheChainingMessage) ||
+          isTRUE(difftime(Sys.time(), .pkgEnv$cacheChainingMessage) > 60*60)) {
+        .pkgEnv$cacheChainingMessage <- Sys.time()
+        message("cacheChaining will only work if not using DBI cache backend; ",
+                "\nset `options(reproducible.cacheChaining = FALSE)` to remove this message",
+                "\nor set `useDBI(FALSE)` ... this message will be shown at package startup and every hour")
+      }
+      first <- FALSE
+    }
+  }
+  first
+}
+
+
+cacheChainingStep <- function(keyFull, callList, .cacheChaining, cacheChainDetails, cachePaths) {
+  # if (!isTRUE(.cacheChaining)) browser()
+  if (!isTRUE(.cacheChaining %in% FALSE)) {
+
+    alreadyCachedArgs <- lapply(attr(callList$new_call, ".Cache")$args_w_defaults,
+                                function(x) attr(x, "tags")) |> unlist()
+    if (!is.null(alreadyCachedArgs)) {
+      alreadyCachedTags <- paste0(cacheChainLabel, names(alreadyCachedArgs))#, ":",
+      keyFull[["preDigest"]][[alreadyCachedTags]] <- unname(gsub("cacheId:", "", alreadyCachedArgs))
+    }
+    .cacheChaining <- if (missing(cacheChainDetails)) .cacheChaining else cacheChainDetails$.cacheChaining
+    if (!is.function(.cacheChaining))
+      .cacheChaining <- sys.function(-2)
+    keyFull[["preDigest"]][[surroundingFunctionLabel]] <- .robustDigest(.cacheChaining)
+    if (useCacheChaining(.cacheChaining) && !is.null(cacheChainDetails$omitArgs)) {
+      ccd <- lapply(cacheChainDetails$details, function(x) x$preDigests)
+      cacheDigestDetails <- rbindlist(ccd, idcol = "obj", use.names = TRUE, fill = TRUE)
+
+      sc <- showCacheFast(cacheId = cacheChainDetails$cfdigList[[1]])
+      if (!is.null(sc)) {
+        sc <- setDT(sc)
+        sss <- strsplit(sc$tagValue, ":")
+        set(sc, NULL, "cacheId2", vapply(sss, function(x) x[[1]], character(1)))
+        set(sc, NULL, "tagValue", vapply(sss, function(x) x[[2]], character(1)))
+        kf <- keyFull$preDigest[!names(keyFull$preDigest) %in% surroundingFunctionLabel]
+        pre <- setDT(list(tagKey = names(kf), tagValue = unname(unlist(kf))))
+
+        # The next few steps are slower with data.table and are the bottlenecks when profiling
+        # outs2 <- sc[pre, on = colnames(pre), nomatch = NA]
+        outs <- setDT(merge(setDF(sc), setDF(pre), by = colnames(pre), all.y = T))
+        if (anyNA(outs$cacheId)) {
+          # if (length(outs$cacheId) == 0) {
+          # not usable -- skip
+        } else {
+          neededNum <- length(unique(outs$tagKey))
+          # lll <- outs[, .N, by = "cacheId2"]
+          lll2 <- table(outs$cacheId2)
+          # setorderv(lll, "cacheId2")
+          # lll2 <- lll2[order(names(lll2))]
+          # if (!(identical(lll$cacheId2, names(lll2)) && identical(lll$N, as.integer(unname(lll2))))) {
+          # }
+          hasAll <- lll2 == neededNum
+          # hasAll <- lll$N == neededNum
+          if (any(hasAll)) {
+            cidToCheck <- names(lll2)[hasAll]
+            # cidToCheck <- lll$cacheId2[hasAll]
+            if (NROW(cidToCheck) > 1) {
+              browser() # these are now wrong -- should be unnecessary -- there should not ever be >1 of these; so don't need to !keep
+            }
+            if (NROW(cidToCheck)) {
+              if (!keyFull$key %in% cidToCheck) { # no override needed
+                sc <- setDT(sc)
+                rrr <- sc[sc$cacheId2 %in% cidToCheck & startsWith(sc$tagKey, cacheChainLabel)]
+                tv <- unique(rrr$tagValue)
+                tk <- unique(rrr$tagKey)
+                scCheck <- showCacheFast(tv, cachePaths[[1]])
+                argName <- gsub(cacheChainLabel, "", tk)
+                allGood <- any(startsWith(scCheck$tagValue, paste0(argName, ":")))
+                if (allGood) {
+                  cacheIdOverrideFromChaining <- showCacheFast(cacheId = cidToCheck, cachePaths[[1]])
+                  keyFull$key <- cacheIdOverrideFromChaining$cacheId[[1]]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return(keyFull)
 }

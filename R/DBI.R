@@ -1106,10 +1106,10 @@ convertDBbackendIfIncorrect <- function(cachePath, drv, conn,
                                         cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
                                         verbose = getOption("reproducible.verbose")) {
   origDrv <- getDrv(drv)
-  origDBI <- useDBI()
-  newDBI <- suppressMessages(useDBI(!origDBI)) # switch to the other
+  origDBI <- useDBI(verbose = -1)
+  newDBI <- useDBI(!origDBI, verbose = -1) # switch to the other
   if (!identical(newDBI, origDBI)) { # if they are same, then DBI is not installed; not point proceeding
-    on.exit(suppressMessages(useDBI(origDBI)))
+    on.exit(suppressMessages(useDBI(origDBI, verbose = -1)))
     drv <- getDrv(drv) # This will return the DBI driver, if it is installed, regardless of drv
     DBFileWrong <- CacheDBFile(cachePath, drv, conn)
     if (file.exists(DBFileWrong)) {
