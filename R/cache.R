@@ -1512,11 +1512,12 @@ getFunctionName2 <- function(mc) {
       mc <- mc[-(1:2)]
     }
     coloncolon <- .grepSysCalls(list(mc), "^\\$|\\[|\\:\\:")
+    coloncoloncolon <- .grepSysCalls(list(mc), "^\\$|\\[|\\:\\:\\:")
     if (length(coloncolon)) { # stats::runif -- has to be first one, not some argument in middle
-      if (length(coloncolon) && length(mc) != 3) { # stats::runif
+      if (length(coloncolon) && length(mc) != 3 || length(coloncoloncolon)) { # stats::runif
 
-    #if (any(grepl("^\\$|\\[|\\:\\:", mc)[1])) { # stats::runif -- has to be first one, not some argument in middle
-    #  if (any(grepl("^\\$|\\[|\\:\\:", mc[[1]])) && length(mc) != 3) { # stats::runif
+        #if (any(grepl("^\\$|\\[|\\:\\:", mc)[1])) { # stats::runif -- has to be first one, not some argument in middle
+        #  if (any(grepl("^\\$|\\[|\\:\\:", mc[[1]])) && length(mc) != 3) { # stats::runif
         fnNameInit <- deparse(mc[[1]])
       } else {
         fnNameInit <- deparse(mc)
@@ -1824,7 +1825,8 @@ CacheDigest <- function(objsToDigest, ..., algo = "xxhash64", calledFrom = "Cach
     lengthChars <- nchar(namesOTD)
     if (!any(namesOTD %in% "FUN")) {
       zeroLength <- which(lengthChars == 0)
-      if (sum(zeroLength) > 0) {
+      alreadyHasDotFun <- ".FUN" %in% namesOTD
+      if (sum(zeroLength) > 0 && !alreadyHasDotFun) {
         names(objsToDigest)[zeroLength[1]] <- ".FUN"
       }
     }
@@ -2546,7 +2548,8 @@ returnObjFromRepo <- function(isInRepo, notOlderThan, fullCacheTableForObj, cach
 
 whereInStack <- function(obj, startingEnv = parent.frame()) {
   foundStarting <- FALSE
-  for (i in 1:sys.nframe()) {
+  snf <- sys.nframe()
+  for (i in 1:snf) {
     testEnv <- sys.frame(-i)
     if (!foundStarting) {
       if (identical(testEnv, startingEnv)) {
@@ -2564,6 +2567,8 @@ whereInStack <- function(obj, startingEnv = parent.frame()) {
       break
     }
   }
+  if (identical(testEnv, .GlobalEnv) && identical(i, snf))
+    testEnv <- NULL
   return(testEnv)
 }
 
