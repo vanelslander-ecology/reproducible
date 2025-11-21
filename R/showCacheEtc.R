@@ -483,15 +483,15 @@ setMethod(
                 # cacheId <- gsub(paste0(CacheDBFileSingleExt(), "|", cacheSaveFormat), "",
                 #                 basename(fil))
                 filesToRm <- dir(dirname(fil), pattern = cacheId, full.names = TRUE)
-                fileExtIncorrect <- unique(fileExt(filesToRm)) # %in% cacheSaveFormat
-                if (any(fileExtIncorrect)) {
-                  messageCache("The database file was using a different save format; deleting Cache entry for ", cacheId,
-                               verbose = getOption("reproducible.verbose"))
-
-                } else {
+                # fileExtIncorrect <- unique(fileExt(filesToRm)) # %in% .cacheSaveFormats
+                # if (any(fileExtIncorrect)) {
+                #   messageCache("The database file was using a different save format; deleting Cache entry for ", cacheId,
+                #                verbose = getOption("reproducible.verbose"))
+                #
+                # } else {
                   messageCache("The database file was corrupt; deleting Cache entry for ", cacheId,
                                verbose = getOption("reproducible.verbose"))
-                }
+                # }
                 unlink(filesToRm)
               }
               out
