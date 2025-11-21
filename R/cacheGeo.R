@@ -631,7 +631,6 @@ CacheGeo <- function(targetFile = NULL,
     if (!folderExists) {
       cloudFolderID <- googledrive::drive_mkdir(cloudFolderID)
     }
-    # objsInGD <- googledrive::drive_ls(cloudFolderID)
     objID <- objsInGD[objsInGD$name %in% basename2(targetFile), ]
 
     if (NROW(objID)) urlThisTargetFile <- objID$drive_resource[[1]]$webViewLink
@@ -661,15 +660,6 @@ CacheGeo <- function(targetFile = NULL,
     existingObj <- eval(aa) |>
       Cache(.cacheExtra = cacheExtra, .functionName = paste0("prepInputs_", basename(targetFile))) # cacheExtra is the md5Checksum on GDrive
 
-    # existingObj <- prepInputs(
-    #   targetFile = asPath(targetFile),
-    #   url = urlThisTargetFile,
-    #   destinationPath = destinationPath, # domain = domain,
-    #   useCache = useCache,
-    #   purge = purge, # It isn't relevant if the file is different than the Checksums
-    #   overwrite = overwrite
-    # ) |> Cache(.cacheExtra = cacheExtra) # cacheExtra is the md5Checksum on GDrive
-
     existingObjOrig <- existingObj
 
     cn <- colnames(existingObj)
@@ -683,8 +673,6 @@ CacheGeo <- function(targetFile = NULL,
     }
     colnames(existingObj) <- cn
 
-    # existingObjSF <- if (is(df, "sf")) df else sf::st_as_sf(df)
-
     existingObjSF <- if (is(existingObj, "sf")) existingObj else sf::st_as_sf(existingObj)
     existingObjSF <- update_bbox(existingObjSF)
     existingObjSFOrig <- existingObjSF
@@ -696,34 +684,6 @@ CacheGeo <- function(targetFile = NULL,
 
       outs <- extractPolygonIfWithin(domain, existingObjSF, bufferOK, existingObj)
       list2env(outs, envir = environment()) # existingObjSF, existingObj, domainExisted
-
-      # wh <- sf::st_within(domain, existingObjSF, sparse = FALSE)
-      # if (isTRUE(wh %in% FALSE) && isTRUE(bufferOK)) {
-      #   diffs <- mapply(minmax = list(c("xmin", "xmax"), c("ymin", "ymax")), function(minmax)
-      #     round(abs(diff(sf::st_bbox(existingObjSF)[minmax])), 0))
-      #   buff <- diffs * 0.025
-      #   meanBuff <- mean(buff)
-      #   meanBuffKm <- round(meanBuff/1e3, 1)
-      #   message("domain is not within existing object; trying a 2.5% (", meanBuffKm, "km) buffer")
-      #   existingObjSF_wider <- sf::st_buffer(existingObjSF, dist = meanBuff)
-      #   wh <- sf::st_within(domain, existingObjSF_wider, sparse = FALSE)
-      # }
-      # wh1 <- apply(wh, 1, any)
-      # wh2 <- apply(wh, 2, any) # This is "are the several domains inside the several existingObjSF"
-      # # length of existingObjSF
-      # domainExisted <- all(wh1)
-      # if (domainExisted) {
-      #
-      #   # THIS IS "PULL OUT INDIVIDUAL SF POLYGON FROM THE MANY"
-      #   if (isTRUE(bufferOK)) # the message will be previously given
-      #     message("domain is within the buffered object; returning the existing parameters")
-      #   else
-      #     message(.message$cacheGeoDomainContained)
-      #   existingObj <- existingObj[wh2, ]
-      # }
-      # if (all(wh1 %in% FALSE)) {
-      #   existingObj <- NULL
-      # }
     } else {
       domainExisted <- TRUE
       message("Spatial domain is missing; returning entire spatial domain")
@@ -843,10 +803,6 @@ CacheGeo <- function(targetFile = NULL,
 
     }
   }
-  # if (is(existingObj, "data.frame")) {
-  #   existingObj <- sf::st_as_sf(existingObj)
-  #   existingObjSF <- existingObj
-  # }
 
   if (exists("existingObjOrig", inherits = FALSE)) {
     messageColoured("To get the full object from googledrive, which looks like this:\n")
@@ -860,15 +816,6 @@ CacheGeo <- function(targetFile = NULL,
       coo <- capture.output(as.call(append(list(quote(prepInputs)), ll[-1])))#, sep = "\n")
       cat(cli::col_yellow(coo), sep = "\n")
     }
-    # aa <- quote(prepInputs(
-    #   targetFile = asPath(targetFile),
-    #   url = urlThisTargetFile,
-    #   destinationPath = destinationPath, # domain = domain,
-    #   useCache = useCache,
-    #   purge = purge, # It isn't relevant if the file is different than the Checksums
-    #   overwrite = overwrite
-    # ))
-
   }
 
 
