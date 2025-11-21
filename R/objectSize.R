@@ -175,8 +175,8 @@ objSizeSession <- function(sumLevel = Inf, enclosingEnvs = TRUE, .prevEnvirs = l
 #' @inheritParams objSize
 .objSizeWithTry <- function(x) {
   for (i in 1:2) {
-    out <- obj_size(x)
     # out <- try(obj_size(x), silent = TRUE)
+    out <- obj_size(x)
     if (is(out, "try-error")) {
       if (identical(i, 1L)) next
     } else {
