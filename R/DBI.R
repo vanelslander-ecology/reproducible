@@ -501,11 +501,16 @@ dbConnectAll <- function(drv = getDrv(getOption("reproducible.drv", NULL)),
 
       DBI::dbClearResult(rs)
     } else {
-      dt <- data.table(
+      dt <- list(
         "cacheId" = cacheId, "tagKey" = tagKey,
         "tagValue" = tagValue,
         "createdDate" = as.character(Sys.time())
       )
+      # dt <- data.table(
+      #   "cacheId" = cacheId, "tagKey" = tagKey,
+      #   "tagValue" = tagValue,
+      #   "createdDate" = as.character(Sys.time())
+      # )
       dtFile <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheId, cacheSaveFormat = "check")
       dt2 <- loadFile(dtFile)#, cacheSaveFormat = cacheSaveFormat)
       dt <- rbindlist(list(dt2, dt), fill = TRUE)
