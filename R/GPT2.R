@@ -580,10 +580,35 @@ get_function_defaults <- function(func) {
 # Helper function to reorder arguments based on formal arguments, combining defaults and user args
 reorder_arguments <- function(formals, args) {
   # Combine defaults and args: user args override defaults
-  combined_args <- modifyList(formals, args, keep.null = TRUE)
 
+  areDots <- names(args) %in% "..."
+  if (any(areDots)) {
+    args2 <- args
+    args2[[which(areDots)]] <- NULL
+    args <- append(args2, args[[which(areDots)]])
+  }
+
+
+  combined_args <- modifyList(formals, args, keep.null = TRUE)
+  areDots <- names(combined_args) %in% "..."
+  if (any(areDots)) {
+
+    argPlaceInsert <- which(!names(args) %in% names(formals))
+
+    needArgs <- !names(args) %in% names(combined_args)
+    combined_args[areDots] <- NULL
+    combined_args <- append(combined_args, args[needArgs])
+    areDots2 <- names(formals) %in% "..."
+    whNotDots <- which(!areDots2)
+    whDots <- which(areDots2)
+    first <- if (whDots > 1) seq(whDots - 1) else numeric()
+    anySeconds <- !whDots > whNotDots
+    second <- if (any(anySeconds)) whNotDots[anySeconds] else numeric()
+    ordered_args <- c(combined_args[first], args[argPlaceInsert], formals[second])
+  } else {
+    ordered_args <- combined_args[union(names(formals), names(combined_args))]
+  }
   # Preserve the order of the formals
-  ordered_args <- combined_args[union(names(formals), names(combined_args))]
 
   return(ordered_args)
 }
