@@ -1056,7 +1056,6 @@ unmakeMemoisable.default <- function(x) {
     if (!requireNamespace("terra", quietly = TRUE)) {
       stop("Please install terra package")
     }
-    messageCache("wrapping terra object for saving...", verboseLevel = 2, verbose = verbose)
     # attrs <- attr(obj, ".Cache")
 
     # next is for terra objects --> terra::wrap is ridiculously slow for SpatVector objects; use
@@ -1085,6 +1084,7 @@ unmakeMemoisable.default <- function(x) {
     }
 
     if (useWrap) {
+      messageCache("wrapping terra object for saving...", verboseLevel = 2, verbose = verbose)
       obj <- terra::wrap(obj)
     } # let method dispatch work
 
