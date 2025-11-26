@@ -913,7 +913,8 @@ assessGoogle <- function(url, archive = NULL, targetFile = NULL,
     on.exit(options(opts))
   }
 
-  if (is.null(archive) || is.na(archive)) {
+  # doDriveGet <- FALSE
+  # if (is.null(archive) || is.na(archive)) {
     if (packageVersion("googledrive") < "2.0.0") {
       fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
                                                                   team_drive = team_drive
@@ -955,8 +956,8 @@ assessGoogle <- function(url, archive = NULL, targetFile = NULL,
       downloadFilename <- archive
     }
     attr(downloadFilename, "drive_resource") <- fileAttr$drive_resource
-  } else {
-    downloadFilename <- archive
+  # } else {
+  #   downloadFilename <- archive
   }
   if (exists("fileSize", inherits = FALSE)) {
     attr(downloadFilename, "fileSize") <- fileSize
