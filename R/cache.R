@@ -1224,6 +1224,9 @@ recursiveEvalNamesOnly <- function(args, envir = parent.frame(), outer = TRUE, r
       isStandAlone <- isDollarSqBrPkgColon(args[[1]])
     }
 
+    if (identical(quote(`function`), args[[1]])) # if it is function definition, then leave the inside unevaluated
+      isStandAlone <- TRUE
+
     if (identical(as.name("<-"), args[[1]])) {
       args <- as.list(args[-(1:2)])[[1]]
     }
