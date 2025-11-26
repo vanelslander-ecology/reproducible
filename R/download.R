@@ -374,6 +374,8 @@ dlGoogle <- function(url, archive = NULL, targetFile = NULL,
       }
     }
     if (!is.null(fs)) {
+      if (!is.numeric(fs))
+        fs <- as.numeric(fs)
       class(fs) <- "object_size"
     }
     isLargeFile <- ifelse(is.null(fs), FALSE, fs > 1e6)
