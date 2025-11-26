@@ -1184,7 +1184,7 @@ findFun <- function(FUNcaptured, envir) {
 
 isDollarSqBrPkgColon <- function(args) {
   ret <- FALSE
-  if (length(args) == 3) { # i.e., only possible if it is just b$fun or stats::runif, not stats::runif(1) or b$fun(1)
+  if (length(args) == 3 || length(args) == 1) { # i.e., only possible if it is just b$fun or stats::runif, not stats::runif(1) or b$fun(1)
     # ret <- isDollarOnlySqBr(args) | isPkgColon(args)
     ret <- isTRUE(any(try(grepl("^\\$|\\[|\\:\\:", args)[1], silent = TRUE)))
   }
