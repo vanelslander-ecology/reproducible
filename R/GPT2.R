@@ -1474,7 +1474,6 @@ loadFromDiskOrMemoise <- function(fromMemoise = FALSE, useCache,
         messageCache("It looks like the cache file is corrupt or was interrupted during write; deleting and recalculating")
         otherFiles2 <- dir(CacheStorageDir(cachePath), pattern = cache_key, full.names = TRUE)
         if (!is(shownCache, "try-error")) {
-          browser()
           otherFiles <- normPath(file.path(CacheStorageDir(cachePath),
                                            shownCache[tagKey == "filesToLoad"]$tagValue))
           otherFiles2 <- c(otherFiles, otherFiles2)
@@ -1800,6 +1799,7 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, verbose) {
     .cacheChaining <- sys.function(-2)
   }
   cfdigList <- details <- preDigests <- NULL
+  messageCacheChainChanged <- FALSE
 
   if (useCacheChaining(.cacheChaining)) {
     bb <- attr(callList$new_call, ".Cache")
@@ -1845,20 +1845,24 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, verbose) {
           messageCache("Skipping digest of ", paste0(names(hasCacheTags), collapse = ", "), verbose = verbose)
           # .cacheExtra <- c(.cacheExtra, preDigests)
         } else {
-          messageCache("Using cacheChaining; but .cacheChaining has changed; adding to new chain")
+          messageCacheChainChanged <- TRUE
+          # messageCache("Using cacheChaining; but .cacheChaining has changed; adding to new chain")
         }
       } else {
-        messageCache("Using cacheChaining; but .cacheChaining has changed or ",
-                     "this is the first call in the .cacheChaining; starting a new chain")
+        messageCacheChainChanged <- TRUE
+        # messageCache("Using cacheChaining; but .cacheChaining has changed or ",
+        #              "this is the first call in the .cacheChaining; starting a new chain")
       }
     } else {
-      messageCache("Using cacheChaining; but .cacheChaining has changed or ",
-                   "this is the first Cached call in the function where ", .messageFunctionFn(callList$.functionName),
-                   " is being Cached; starting a new chain")
+      messageCacheChainChanged <- TRUE
     }
     attr(callList$new_call, ".Cache") <- append(attr(callList$new_call, ".Cache"), cfdigList)
 
   }
+  if (isTRUE(messageCacheChainChanged))
+    messageCache("Using cacheChaining; but enclosing function has changed or ",
+                 "this is the first Cached call in the function where ", .messageFunctionFn(callList$.functionName),
+                 " is being Cached; starting a new chain")
   list(.cacheChaining = .cacheChaining,
        preDigests = preDigests,
        omitArgs = omitArgs,
