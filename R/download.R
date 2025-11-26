@@ -921,21 +921,30 @@ assessGoogle <- function(url, archive = NULL, targetFile = NULL,
   }
 
   # if (is.null(archive) || is.na(archive)) {
-  if (packageVersion("googledrive") < "2.0.0") {
-    fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
-                                                                team_drive = team_drive
-    )))
-  } else {
-    if (isTRUE(isDirectory(url, FALSE))) {
+  if (isTRUE(isDirectory(url, FALSE))) {
+    if (packageVersion("googledrive") < "2.0.0") {
+      fileAttr <- retry(retries = 1, quote(googledrive::drive_ls(googledrive::as_id(url),
+                                                                  shared_drive = team_drive
+      )))
+    } else {
       fileAttr <- retry(retries = 1, quote(googledrive::drive_ls(googledrive::as_id(url),
                                                                  shared_drive = team_drive
       )))
+    }
+  } else {
+    if (packageVersion("googledrive") < "2.0.0") {
+      fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
+                                                                  team_drive = team_drive
+      )))
     } else {
+
       fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
                                                                   shared_drive = team_drive
       )))
     }
+
   }
+
   fileSize <- sapply(fileAttr$drive_resource, function(x) x$size)
   if (!is.null(unlist(fileSize))) {
     messageAboutFilesize(fileSize, verbose)
