@@ -1837,8 +1837,9 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, verbose) {
               list() |> setNames(onlyOneCid) |>
               as.environment()
           } else {
-            preDigests <- Map(nam = names(hasCacheTags), function(nam)
-              .pkgEnv$cacheChaining[[cfdigList[[1]]]][[onlyOneCid]]$preDigests[[nam]])
+            preDigests <- Map(nam = names(hasCacheTags), oocid = onlyOneCid, function(nam, oocid) {
+              .pkgEnv$cacheChaining[[cfdigList[[1]]]][[oocid]]$preDigests[[nam]]
+            })
           }
 
           omitArgs <- c(omitArgs, names(hasCacheTags))
@@ -1876,43 +1877,53 @@ cacheChainingPost <- function(detailed_key, outputFromEvaluate, cacheChainingOut
   if (!isTRUE(.cacheChaining %in% FALSE)) {
 
     dk <- detailed_key[["preDigest"]]
-    if (!is.null(detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction)) {
-      cacheChainingFnDigest <- detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction
-    } else {
-      cacheChainingFnDigest <- dk[[surroundingFunctionLabel]]
-    }
-    attr(outputFromEvaluate, cacheChainingOuterFunctionName) <- cacheChainingFnDigest
-    if (is.null(.pkgEnv$cacheChaining[[cacheChainingFnDigest]])) {
-      .pkgEnv$cacheChaining[[cacheChainingFnDigest]] <- new.env(parent = emptyenv())
-    }
-
-    dkSimple <- dk[-which(names(dk) == surroundingFunctionLabel)]
-    userTags <- paste0(names(dkSimple), ":", paste0(detailed_key$key, ":", dkSimple))
-    fil <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheChainingFnDigest)
-    needWrite <- TRUE
-    if (file.exists(fil)) {
-      tmp <- loadFile(fil)
-      userTags1 <- paste0(tmp$tagKey, ":", tmp$tagValue)
-      userTags2 <- union(userTags, userTags1)
-      if (identical(length(userTags2), length(userTags1))) {
-        needWrite <- FALSE
+    if (!is.null(dk)) { # some have only `key` and no `preDigest`, e.g., Cache(.inputObjects(sim), .objects = objectsToEvaluateForCaching,
+      if (exists("aaaa", envir = .GlobalEnv)) browser()
+      if (!is.character(detailed_key$preDigest$.cacheExtra) &&
+          !is.null(detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction)) {
+        cacheChainingFnDigest <- detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction
       } else {
-        userTags <- userTags2
+        cacheChainingFnDigest <- dk[[surroundingFunctionLabel]]
+      }
+      attr(outputFromEvaluate, cacheChainingOuterFunctionName) <- cacheChainingFnDigest
+
+      if (is.null(.pkgEnv$cacheChaining[[cacheChainingFnDigest]])) {
+        .pkgEnv$cacheChaining[[cacheChainingFnDigest]] <- new.env(parent = emptyenv())
       }
 
-    }
-    if (isTRUE(needWrite)) {
-      # This adds or updates a new entry in the cache repository about the function itself
-      fs <- saveToCache(cachePath = cachePath,
-                        obj = NULL, verbose = verbose - 1, # cache_file[1],
-                        userTags = userTags, linkToCacheId = linkToCacheId,
-                        cacheSaveFormat = cacheSaveFormat,
-                        drv = drv, conn = conn,
-                        cacheId = cacheChainingFnDigest)
+      dkSimple <- dk[-which(names(dk) == surroundingFunctionLabel)]
+      if (any(names(dkSimple) %in% ".cacheExtra")) {
+        if (is.null(names(dkSimple[[".cacheExtra"]]))) {
+          names(dkSimple[[".cacheExtra"]]) <- as.character(seq_along(length(dkSimple[[".cacheExtra"]])))
+        }
+      }
+      userTags <- paste0(names(unlist(dkSimple)), ":", paste0(detailed_key$key, ":", unlist(dkSimple)))
+      fil <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheChainingFnDigest)
+      needWrite <- TRUE
+      if (file.exists(fil)) {
+        tmp <- loadFile(fil)
+        userTags1 <- paste0(tmp$tagKey, ":", tmp$tagValue)
+        userTags2 <- union(userTags, userTags1)
+        if (identical(length(userTags2), length(userTags1))) {
+          needWrite <- FALSE
+        } else {
+          userTags <- userTags2
+        }
 
-      assign(detailed_key$key,
-             list(preDigests = detailed_key$preDigest) ,
-             envir = .pkgEnv$cacheChaining[[cacheChainingFnDigest]])
+      }
+      if (isTRUE(needWrite)) {
+        # This adds or updates a new entry in the cache repository about the function itself
+        fs <- saveToCache(cachePath = cachePath,
+                          obj = NULL, verbose = verbose - 1, # cache_file[1],
+                          userTags = userTags, linkToCacheId = linkToCacheId,
+                          cacheSaveFormat = cacheSaveFormat,
+                          drv = drv, conn = conn,
+                          cacheId = cacheChainingFnDigest)
+
+        assign(detailed_key$key,
+               list(preDigests = detailed_key$preDigest) ,
+               envir = .pkgEnv$cacheChaining[[cacheChainingFnDigest]])
+      }
     }
   }
   return(outputFromEvaluate)
@@ -1943,14 +1954,16 @@ useCacheChaining <- function(.cacheChaining) {
 
 
 cacheChainingStep <- function(keyFull, callList, .cacheChaining, cacheChainDetails, cachePaths) {
-  # if (!isTRUE(.cacheChaining)) browser()
   if (!isTRUE(.cacheChaining %in% FALSE)) {
 
     alreadyCachedArgs <- lapply(attr(callList$new_call, ".Cache")$args_w_defaults,
                                 function(x) attr(x, "tags")) |> unlist()
     if (!is.null(alreadyCachedArgs)) {
       alreadyCachedTags <- paste0(cacheChainLabel, names(alreadyCachedArgs))#, ":",
-      keyFull[["preDigest"]][[alreadyCachedTags]] <- unname(gsub("cacheId:", "", alreadyCachedArgs))
+      newBits <- Map(act = alreadyCachedTags, aca = alreadyCachedArgs, function(act, aca) {
+        unname(gsub("cacheId:", "", aca))
+      })
+      keyFull[["preDigest"]] <- modifyList(keyFull[["preDigest"]], newBits)
     }
     .cacheChaining <- if (missing(cacheChainDetails)) .cacheChaining else cacheChainDetails$.cacheChaining
     if (!is.function(.cacheChaining))
@@ -1967,7 +1980,7 @@ cacheChainingStep <- function(keyFull, callList, .cacheChaining, cacheChainDetai
         set(sc, NULL, "cacheId2", vapply(sss, function(x) x[[1]], character(1)))
         set(sc, NULL, "tagValue", vapply(sss, function(x) x[[2]], character(1)))
         kf <- keyFull$preDigest[!names(keyFull$preDigest) %in% surroundingFunctionLabel]
-        pre <- setDT(list(tagKey = names(kf), tagValue = unname(unlist(kf))))
+        pre <- setDT(list(tagKey = names(unlist(kf)), tagValue = unname(unlist(kf))))
 
         # The next few steps are slower with data.table and are the bottlenecks when profiling
         # outs2 <- sc[pre, on = colnames(pre), nomatch = NA]
