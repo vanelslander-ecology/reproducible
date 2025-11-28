@@ -1878,7 +1878,6 @@ cacheChainingPost <- function(detailed_key, outputFromEvaluate, cacheChainingOut
 
     dk <- detailed_key[["preDigest"]]
     if (!is.null(dk)) { # some have only `key` and no `preDigest`, e.g., Cache(.inputObjects(sim), .objects = objectsToEvaluateForCaching,
-      if (exists("aaaa", envir = .GlobalEnv)) browser()
       if (!is.character(detailed_key$preDigest$.cacheExtra) &&
           !is.null(detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction)) {
         cacheChainingFnDigest <- detailed_key$preDigest$.cacheExtra$cacheChainingOuterFunction
