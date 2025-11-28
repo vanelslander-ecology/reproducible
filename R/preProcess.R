@@ -816,7 +816,7 @@ preProcess <- function(targetFile = NULL, url = NULL, archive = NULL, alsoExtrac
     if (is.name(fun)) {
       possFun <- get0(fun, envir = envir)
       if (is.null(possFun)) {
-        env <- whereInStack(fun)
+        env <- .whereInStack(fun)
         fun <- get(fun, envir = env)
       }
     }

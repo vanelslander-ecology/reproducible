@@ -1243,7 +1243,7 @@ recursiveEvalNamesOnly <- function(args, envir = parent.frame(), outer = TRUE, r
       out <- lapply(args, function(xxxx) {
         if (is.name(xxxx)) {
           # exists(xxxx, envir = envir, inherits = FALSE)
-          if (exists(xxxx, envir)) { # looks like variables that are in ... in the `envir` are not found; would need whereInStack
+          if (exists(xxxx, envir)) { # looks like variables that are in ... in the `envir` are not found; would need .whereInStack
             evd <- try(eval(xxxx, envir), silent = TRUE)
             isPrim <- is.primitive(evd)
             if (isPrim) {
@@ -1651,9 +1651,9 @@ getFunctionName2 <- function(mc) {
                 out <- "..."
               } else {
                 env2 <- try(if (isDollarSqBrPkgColon(ee)) {
-                  whereInStack(ee[[2]])
+                  .whereInStack(ee[[2]])
                 } else {
-                  whereInStack(ee)
+                  .whereInStack(ee)
                 }, silent = TRUE)
                 if (is(env2, "try-error")) {
                   out <- try(paste(format(ee$destinationPath), collapse = " "), silent = TRUE)
@@ -2549,7 +2549,19 @@ returnObjFromRepo <- function(isInRepo, notOlderThan, fullCacheTableForObj, cach
   return(output)
 }
 
-whereInStack <- function(obj, startingEnv = parent.frame()) {
+#' Search for objects in the call stack
+#'
+#' Normally, this is only used in special, advanced uses. The standard approach
+#' to getting an object from an environment in the call stack is to explicitly
+#' pass it into the function.
+#'
+#' @param obj Character string. The object name to search.
+#' @param startingEnv An environment to start searching in.
+#'
+#' @return The environment in which the object exists. It will return the
+#' first environment it finds, searching outwards from where the function is used.
+#' @export
+.whereInStack <- function(obj, startingEnv = parent.frame()) {
   foundStarting <- FALSE
   snf <- sys.nframe()
   for (i in 1:snf) {

@@ -286,7 +286,7 @@ loadFromCache <- function(cachePath = getOption("reproducible.cachePath"),
       #   }
       #
       #   if (length(sameCacheID)) {
-      #     # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      #     # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #     #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #     #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #     #           "existing cache, while using a simList. ",
@@ -1218,7 +1218,7 @@ loadFromCacheSwitchFormat <- function(f, verbose, cachePath, fullCacheTableForOb
     # }
 
     if (length(sameCacheID)) {
-      # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #           "existing cache, while using a simList. ",

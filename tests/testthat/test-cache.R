@@ -2150,23 +2150,23 @@ test_that("cacheChaining", {
 
 
   if (FALSE) { # for benchmarking
-    fn2 <- function(y) {
-      fn1(2)
-    }
-    TF <- FALSE
-    withr::local_options(reproducible.verbose = FALSE)
-    mbs <- list()
-    for (TF in c(TRUE, FALSE)) {
-      mbs[[as.character(TF)]] <- microbenchmark::microbenchmark(N1 = {options(reproducible.cacheChaining = TF); N <- 10^1; fn2(); fn2()},
-                                            N2 = {options(reproducible.cacheChaining = TF); N <- 10^2; fn2(); fn2()},
-                                            N3 = {options(reproducible.cacheChaining = TF); N <- 10^3; fn2(); fn2()},
-                                            N4 = {options(reproducible.cacheChaining = TF); N <- 10^4; fn2(); fn2()},
-                                            N5 = {options(reproducible.cacheChaining = TF); N <- 10^5; fn2(); fn2()},
-                                            N6 = {options(reproducible.cacheChaining = TF); N <- 10^6; fn2(); fn2()},
-                                            N7 = {options(reproducible.cacheChaining = TF); N <- 10^7; fn2(); fn2()},
-                                            N7.5 = {options(reproducible.cacheChaining = TF); N <- 10^7.5; fn2(); fn2()},
-                                            times = 4)
-    }
+    # fn2 <- function(y) {
+    #   fn1(2)
+    # }
+    # TF <- FALSE
+    # withr::local_options(reproducible.verbose = FALSE)
+    # mbs <- list()
+    # for (TF in c(TRUE, FALSE)) {
+    #   mbs[[as.character(TF)]] <- microbenchmark::microbenchmark(N1 = {options(reproducible.cacheChaining = TF); N <- 10^1; fn2(); fn2()},
+    #                                         N2 = {options(reproducible.cacheChaining = TF); N <- 10^2; fn2(); fn2()},
+    #                                         N3 = {options(reproducible.cacheChaining = TF); N <- 10^3; fn2(); fn2()},
+    #                                         N4 = {options(reproducible.cacheChaining = TF); N <- 10^4; fn2(); fn2()},
+    #                                         N5 = {options(reproducible.cacheChaining = TF); N <- 10^5; fn2(); fn2()},
+    #                                         N6 = {options(reproducible.cacheChaining = TF); N <- 10^6; fn2(); fn2()},
+    #                                         N7 = {options(reproducible.cacheChaining = TF); N <- 10^7; fn2(); fn2()},
+    #                                         N7.5 = {options(reproducible.cacheChaining = TF); N <- 10^7.5; fn2(); fn2()},
+    #                                         times = 4)
+    # }
   }
 })
 
