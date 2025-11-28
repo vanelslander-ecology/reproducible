@@ -2056,3 +2056,127 @@ test_that("ensure default tags are correct", {
   expect_true(length(missingFromDefault) == 0)
 
 })
+
+test_that("cacheChaining", {
+  testInit()
+  withr::local_options(reproducible.verbose = TRUE,
+                       reproducible.useMemoise = FALSE)
+  samWMean <- function(x, size, other) {
+    sample(x, size) |> mean()
+  }
+  arb <- list()
+  args <- c(3,5)
+  N <- 1e6
+  df <- list(a = list(TRUE, NULL, TRUE), b = list(NULL, NULL, NULL))
+  for (dfIndex in 1:2) {
+    for (arg in args) { # These are 2 different functions (below); one is identical each time, the other is not
+      clearCache(ask = F, verbose = FALSE)
+      mess <- list()
+      sc <- list()
+      index <- 0L
+
+      for (index in 1:3) {
+        # i <- c(TRUE, FALSE, TRUE)[index]
+        #if (index == 3 && arg == args[2])
+        #  aaaa <<- 1; on.exit(rm(aaaa, envir = .GlobalEnv))
+        i <- df[[dfIndex]][[index]]
+        # index <- index + 1L
+        withr::local_seed(123)
+        iChar <- as.character(index)
+        withr::local_options(reproducible.cacheChaining = i)
+        fn1 <- function(x) {
+          a <- sample(N) |> Cache()
+          # if (exists("aaaa", envir = .GlobalEnv)) browser()
+          b <- samWMean(a, size = length(a) * 0.9, other = x) |> Cache()
+          # if (exists("aaaa", envir = .GlobalEnv)) browser()
+          d <- samWMean(a, size = length(a) * 0.8, other = x) |> Cache()
+          c(mean(a), b, d)
+        }
+        if (arg == args[1]) {
+          fn2 <- function(y) {
+            fn1(2)
+          }
+        } else {
+          fn2 <- function(y) {
+            fn1(sample(1e6, size = 1))
+          }
+        }
+        arb[[iChar]] <- list()
+        if (index < 3) { # don't clear the 3rd one so that we can test that cacheChaining doesn't need a new entry in the Cache
+          clearCache(ask = FALSE)
+        } else {
+          # aaaa <<- 1; on.exit(rm(aaaa, envir = .GlobalEnv))
+        }
+        mess[[iChar]] <- capture_messages({
+          arb[[iChar]][[1]] <- fn2() # a --> calculate & slow; b --> no digest, but still calculate & slow; d --> no digest, still calculate & slow
+          arb[[iChar]][[2]] <- fn2()# a --> digest & return cache; b --> skip digest, return cache; d --> skip digest, return cache
+        })
+        # rm(aaaa, envir = .GlobalEnv)
+        sc[[iChar]] <- showCache(verbose = FALSE)[tagKey == "elapsedTimeDigest"]
+
+      }
+
+      # Should be the same pattern of saving/loading regardless of chainCaching
+      # aaaa <<- 1; on.exit(rm(aaaa, envir = .GlobalEnv))
+      #if (dfIndex == 2)
+      #   browser()
+      expect_equivalent(length(grep("Saved", mess$`2`)), arg)
+      expect_equivalent(length(grep("Saved", mess$`1`)), arg)
+      comp <- if (arg == args[1]) 0 else 4
+      expect_equivalent(length(grep("Saved", mess$`3`)), comp) # the 2 that are `fn1(sample(1e6, size = 1))`
+
+
+      # Should only show the messaging when cacheChaining is on
+      if (dfIndex == 1) {
+        expect_equivalent(length(grep("cacheChaining", mess$`1`)), 6)
+        expect_equivalent(length(grep("Skipping digest", mess$`1`)), 4)
+        expect_equivalent(length(grep("cacheChaining", mess$`2`)), 0)
+        expect_equivalent(length(grep("Skipping digest", mess$`2`)), 0)
+        expect_equivalent(length(grep("cacheChaining", mess$`3`)), 6)
+        expect_equivalent(length(grep("Skipping digest", mess$`3`)), 4)
+      }
+
+      # Basically, 2 of the 3 MUST be faster to digest
+      if (dfIndex == 1)
+        if (interactive()) # but this will be unreliable because of the sample(1e6) above is fast to digest;
+          #  to confirm this, set the N to 1e7
+          # expect_true(sum(sc$`1`$tagValue < sc$`2`$tagValue) >= 2)
+      # print(sc)
+
+      # cacheChaining shouldn't change anything; they should be the same
+      expect_equivalent(arb$`TRUE`, arb$`FALSE`)
+    }
+  }
+
+
+  if (FALSE) { # for benchmarking
+    # fn2 <- function(y) {
+    #   fn1(2)
+    # }
+    # TF <- FALSE
+    # withr::local_options(reproducible.verbose = FALSE)
+    # mbs <- list()
+    # for (TF in c(TRUE, FALSE)) {
+    #   mbs[[as.character(TF)]] <- microbenchmark::microbenchmark(N1 = {options(reproducible.cacheChaining = TF); N <- 10^1; fn2(); fn2()},
+    #                                         N2 = {options(reproducible.cacheChaining = TF); N <- 10^2; fn2(); fn2()},
+    #                                         N3 = {options(reproducible.cacheChaining = TF); N <- 10^3; fn2(); fn2()},
+    #                                         N4 = {options(reproducible.cacheChaining = TF); N <- 10^4; fn2(); fn2()},
+    #                                         N5 = {options(reproducible.cacheChaining = TF); N <- 10^5; fn2(); fn2()},
+    #                                         N6 = {options(reproducible.cacheChaining = TF); N <- 10^6; fn2(); fn2()},
+    #                                         N7 = {options(reproducible.cacheChaining = TF); N <- 10^7; fn2(); fn2()},
+    #                                         N7.5 = {options(reproducible.cacheChaining = TF); N <- 10^7.5; fn2(); fn2()},
+    #                                         times = 4)
+    # }
+  }
+})
+
+test_that("Cache with weird dots", {
+  testInit()
+  a <- as.data.frame(list(1, 2), F, F, a = 2, rr = 23) |> Cache()
+  b <- as.data.frame(list(1, 2), F, F, a = 2, rr = 23) |> Cache()
+  d <- as.data.frame(list(1, 2), F, F, a = 3, rr = 23) |> Cache()
+  expect_true(attr(a, ".Cache")$newCache)
+  expect_false(attr(b, ".Cache")$newCache)
+  expect_true(attr(d, ".Cache")$newCache)
+
+})

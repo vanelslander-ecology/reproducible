@@ -939,7 +939,7 @@ unmakeMemoisable.default <- function(x) {
   obj <- lapply(obj, function(objj, ...) {
     .wrap(objj, ...)
   }, preDigest = preDigest, cachePath = cachePath, drv = drv,
-                conn = conn, verbose = verbose, cacheId = cacheId, ...)
+     conn = conn, verbose = verbose, cacheId = cacheId, ...)
   hasTagAttr <- lapply(obj, function(x) attr(x, "tags"))
   tagAttr <- unname(unlist(hasTagAttr)) # this removed name
   if (length(tagAttr)) {
@@ -951,7 +951,7 @@ unmakeMemoisable.default <- function(x) {
     attrsOrig[["tags"]] <- newList
   }
   if (!is.null(attrsOrig)) {
-    for (tt in intersect(names(attrsOrig), c(".Cache", "tags", "call")))
+    for (tt in intersect(names(attrsOrig), c(".Cache", "tags", callInCache)))
       attr(obj, tt) <- attrsOrig[[tt]]
   }
   obj
@@ -1019,12 +1019,12 @@ unmakeMemoisable.default <- function(x) {
 
     attr(obj, "tags") <- atts$tags
     obj <- .setSubAttrInList(obj, ".Cache", "newCache", atts$.Cache$newCache)
-    attr(obj, "call") <- atts$call
+    attr(obj, callInCache) <- atts$call
 
     if (!identical(attr(obj, ".Cache")$newCache, atts$.Cache$newCache)) {
       stop("attributes are not correct 6")
     }
-    if (!identical(attr(obj, "call"), atts$call)) {
+    if (!identical(attr(obj, callInCache), atts$call)) {
       stop("attributes are not correct 7")
     }
     if (!identical(attr(obj, "tags"), atts$tags)) {
@@ -1056,7 +1056,6 @@ unmakeMemoisable.default <- function(x) {
     if (!requireNamespace("terra", quietly = TRUE)) {
       stop("Please install terra package")
     }
-    messageCache("wrapping terra object for saving...", verboseLevel = 2, verbose = verbose)
     # attrs <- attr(obj, ".Cache")
 
     # next is for terra objects --> terra::wrap is ridiculously slow for SpatVector objects; use
@@ -1085,6 +1084,7 @@ unmakeMemoisable.default <- function(x) {
     }
 
     if (useWrap) {
+      messageCache("wrapping terra object for saving...", verboseLevel = 2, verbose = verbose)
       obj <- terra::wrap(obj)
     } # let method dispatch work
 

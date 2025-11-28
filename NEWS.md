@@ -1,6 +1,16 @@
 # reproducible 3.0.0
 
+* new feature: `cacheChaining`; in cases where there are >1 `Cache` call within a single 
+  function, the `cacheChaining` will `digest` the containing function (via `sys.function(-1)`)
+  to determine whether it is stable between calls. If it is unchanged, then a series of 
+  `Cache` calls can be eligible for chaining, meaning where each subsequent `Cache` call 
+  refrains from digesting an object that was the outcome of a prior `Cache` call, within 
+  the same -- and unchanged from the previous time -- function. This can dramatically 
+  speed up computations when `Cache` needs to digest large objects and the `digest` step
+  takes a long time;
 * drop support for R 4.1 and 4.2;
+* attribute that was named "call" has been changed to "callInCache" to avoid newly 
+  discovered collision with xgboost package that uses that attribute name
 * minor bugfixes
 * `format` replaces `cacheSaveFormat` as an argument so individual Cache calls can switch backend;
   this can be useful when e.g., `qs` (which tends to be faster and smaller files) does not work

@@ -114,14 +114,14 @@ setMethod(
   signature = "ANY",
   definition = function(object, .objects, length, algo, quick, classOptions) {
     # browser(expr = exists("._robustDigest_1"))
-    if (is(object, "quosure")) { # can't get this class from rlang via importClass rlang quosure
+    if (inherits(object, "quosure")) { # can't get this class from rlang via importClass rlang quosure
       if (!requireNamespace("rlang")) stop("Please `install.packages('rlang')`")
       object <- rlang::eval_tidy(object)
     }
 
     if (inherits(object, "Spatial")) {
       object <- .removeCacheAtts(object)
-      if (is(object, "SpatialPoints")) {
+      if (inherits(object, "SpatialPoints")) {
         forDig <- as.data.frame(object)
       } else {
         forDig <- object
@@ -138,14 +138,14 @@ setMethod(
           }
         }
       }
-    } else if (is(object, "Raster")) {
+    } else if (inherits(object, "Raster")) {
       object <- .removeCacheAtts(object)
 
       dig <- suppressWarnings(
         .digestRasterLayer(object, length = length, algo = algo, quick = quick)
       )
       forDig <- unlist(dig)
-    } else if (is(object, "cluster")) { # can't get this class from parallel via importClass parallel cluster
+    } else if (inherits(object, "cluster")) { # can't get this class from parallel via importClass parallel cluster
       forDig <- NULL
     } else if (inherits(object, "SpatRaster")) {
       if (!requireNamespace("terra", quietly = TRUE)) {
@@ -185,7 +185,7 @@ setMethod(
     } else if (inherits(object, "drive_id")) {
       if (.requireNamespace("googledrive")) {
         forDig <- try(googledrive::drive_get(object))
-        if (is(forDig, "try-error")) {
+        if (inherits(forDig, "try-error")) {
           message("Detected that object is a googledrive id; can't access it online; ",
                   "evaluating only the url as character string")
           forDig <- object
@@ -537,9 +537,13 @@ basenames3 <- function(object, nParentDirs) {
   if (!is.null(attr(x, ".Cache"))) {
     attr(x, ".Cache") <- NULL
   }
-  if (!is.null(attr(x, "call"))) {
-    attr(x, "call") <- NULL
+  if (!is.null(attr(x, callInCache))) {
+    attr(x, callInCache) <- NULL
   }
+  if (!is.null(attr(x, cacheChainingOuterFunctionName))) {
+    attr(x, cacheChainingOuterFunctionName) <- NULL
+  }
+
   x
 }
 
@@ -550,7 +554,7 @@ basenames3 <- function(object, nParentDirs) {
     onDiskRaster <- all(namesFrom %in% c("origRaster", "cacheRaster"))
     isSpatVector <- all(names(from) %in% c("x", "type", "atts", "crs"))
 
-    if ((is(from, "list") || is(from, "environment")) && onDiskRaster %in% FALSE && isSpatVector %in% FALSE) {
+    if ((inherits(from, "list") || inherits(from, "environment")) && onDiskRaster %in% FALSE && isSpatVector %in% FALSE) {
       if (!inherits(to, "GPModel")) { ## can't do this for GPmodel Class
         if (length(from) && length(to)) {
           nams <- grep("^\\.mods$|^\\._", namesFrom, value = TRUE, invert = TRUE)
@@ -563,7 +567,7 @@ basenames3 <- function(object, nParentDirs) {
     }
   }
 
-  for (i in c("tags", ".Cache", "call")) {
+  for (i in c("tags", ".Cache", callInCache)) {
     if (!is.null(attr(from, i))) {
       attr(to, i) <- attr(from, i)
     }
@@ -658,23 +662,23 @@ dotObjectsToNULLInList <- function(object, .objects) {
 #       obj <- paste0(".reproducibleCacheAddressEnv")
 #       if (!exists(obj, envir = envir))
 #         assign(obj, new.env(parent = emptyenv()), envir = envir)
-# 
+#
 #       if (is.null(.pkgEnv[[cae]]))
 #         assign(cae, new.env(parent = emptyenv()), envir = .pkgEnv)
-# 
+#
 #       assign(obj, envir[[obj]], envir = .pkgEnv[[cae]])# <- env
 #     }
-# 
+#
 #     if (exists(obj, envir = envir) && is.null(env)) {
 #       env <- get(obj, envir = envir, inherits = FALSE)
 #     }
-# 
+#
 #   }
 #   env
 # }
-# 
+#
 # reproducible.CacheAddressEnv <- "reproducible.CacheAddressEnv"
-# 
+#
 # memoiseEnv <- function(cachePath, envir = .GlobalEnv) {
 #   memPersist <- isTRUE(getOption("reproducible.memoisePersist", NULL))
 #   if (memPersist) {

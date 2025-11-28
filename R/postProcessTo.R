@@ -454,17 +454,18 @@ maskTo <- function(from, maskTo, # touches = FALSE,
         # New to deal with case where `maskTo` is a SpatRaster
         if (isGridded(maskTo)) {
           maskToTmp <- !is.na(maskTo)[[1]] # the [[1]] is in case it is a multilayer stack; take first
-          maskToTmp[maskToTmp[] == 0] <- NA
+
+          # Memory safe alternative to maskToTmp[maskToTmp[] == 0] <- NA
+          maskToTmp <- terra::subst(
+            x = maskToTmp,
+            from = 0,
+            to = NA
+          )
           maskTo <- terra::as.polygons(maskToTmp)
         }
 
         if (isSF(from)) {
           if (!isSF(maskTo)) {
-            # if (isGridded(maskTo)) {
-            #   maskToTmp <- !is.na(maskTo)
-            #   maskToTmp[maskToTmp[] == 0] <- NA
-            #   maskTo <- terra::as.polygons(maskToTmp)
-            # }
             maskTo <- sf::st_as_sf(maskTo)
           }
         }
@@ -1804,7 +1805,6 @@ detectThreads <- function(threads = getOption("reproducible.gdalwarpThreads", 2)
   if (isNULLThreads) {
     threads <- 1L
   } else {
-
     if (isNotNumThreads || isNAThreads || lenNumThreadsNot1) {
       if (isNotNumThreads)
         threads <- 2L

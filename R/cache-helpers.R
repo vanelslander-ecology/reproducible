@@ -387,7 +387,7 @@ copyFile <- Vectorize(copySingleFile, vectorize.args = c("from", "to"))
     module <- get0("m", envir = sys.frame(tail(doEventFrameNum, 1)))
     if (is.null(module)) { # this block should cover any other cases, though is likely unnecessary
       # This whole mechanism is predicated on the module name being called "m" in the above 2 functions
-      moduleEnv <- whereInStack("m")
+      moduleEnv <- .whereInStack("m")
       module <- get0("m", envir = moduleEnv)
     }
 
@@ -623,7 +623,7 @@ wrapSpatVector <- function(obj) {
 }
 
 unwrapSpatVector <- function(obj) {
-  if (NROW(obj$geometry))
+  if (NROW(obj$geometry) == 0)
     obj$geom_type <- "points"
   sv <- terra::vect(obj$geometry, type = obj$geom_type, crs = obj$crs)
 

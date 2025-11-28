@@ -286,7 +286,7 @@ loadFromCache <- function(cachePath = getOption("reproducible.cachePath"),
       #   }
       #
       #   if (length(sameCacheID)) {
-      #     # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      #     # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #     #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #     #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #     #           "existing cache, while using a simList. ",
@@ -501,11 +501,16 @@ dbConnectAll <- function(drv = getDrv(getOption("reproducible.drv", NULL)),
 
       DBI::dbClearResult(rs)
     } else {
-      dt <- data.table(
+      dt <- list(
         "cacheId" = cacheId, "tagKey" = tagKey,
         "tagValue" = tagValue,
         "createdDate" = as.character(Sys.time())
       )
+      # dt <- data.table(
+      #   "cacheId" = cacheId, "tagKey" = tagKey,
+      #   "tagValue" = tagValue,
+      #   "createdDate" = as.character(Sys.time())
+      # )
       dtFile <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheId, cacheSaveFormat = "check")
       dt2 <- loadFile(dtFile)#, cacheSaveFormat = cacheSaveFormat)
       dt <- rbindlist(list(dt2, dt), fill = TRUE)
@@ -1106,10 +1111,10 @@ convertDBbackendIfIncorrect <- function(cachePath, drv, conn,
                                         cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
                                         verbose = getOption("reproducible.verbose")) {
   origDrv <- getDrv(drv)
-  origDBI <- useDBI()
-  newDBI <- suppressMessages(useDBI(!origDBI)) # switch to the other
+  origDBI <- useDBI(verbose = -1)
+  newDBI <- useDBI(!origDBI, verbose = -1) # switch to the other
   if (!identical(newDBI, origDBI)) { # if they are same, then DBI is not installed; not point proceeding
-    on.exit(suppressMessages(useDBI(origDBI)))
+    on.exit(suppressMessages(useDBI(origDBI, verbose = -1)))
     drv <- getDrv(drv) # This will return the DBI driver, if it is installed, regardless of drv
     DBFileWrong <- CacheDBFile(cachePath, drv, conn)
     if (file.exists(DBFileWrong)) {
@@ -1213,7 +1218,7 @@ loadFromCacheSwitchFormat <- function(f, verbose, cachePath, fullCacheTableForOb
     # }
 
     if (length(sameCacheID)) {
-      # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #           "existing cache, while using a simList. ",
