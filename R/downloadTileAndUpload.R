@@ -819,10 +819,10 @@ checkHaveCorrectHashedVersion <- function(targetFile, remoteHashFile, remoteMeta
   haveCorrectVersion <- FALSE
   askAboutPurge <- FALSE
   fe <- file.exists(remoteHashFile)
-  if (fe)
-    haveCorrectVersion <- identical(readLines(remoteHashFile), remoteMetadata$remoteHash)
+
+  if (isTRUE(fe))
   # But still could be incomplete
-  if (isTRUE(fe)) {
+    haveCorrectVersion <- identical(readLines(remoteHashFile), remoteMetadata$remoteHash)
     if (haveCorrectVersion %in% FALSE) {
       askAboutPurge <- TRUE
     } else {
