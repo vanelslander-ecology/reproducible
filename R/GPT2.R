@@ -1203,7 +1203,7 @@ doSaveToCache <- function(outputFromEvaluate, metadata, cachePaths, callList, # 
   outputFromEvaluate <- cacheChainingPost(detailed_key, outputFromEvaluate,
                                             attr(callList$new_call, ".Cache")[cacheChainingOuterFunctionName],
                                             cachePaths[[1]], linkToCacheId = NULL, cacheSaveFormat,
-                                          .cacheChaining = .cacheChaining, drv, conn)
+                                          .cacheChaining = .cacheChaining, drv, conn, verbose = verbose)
   metadata <- wrapSaveToCache(outputFromEvaluate, metadata, detailed_key$key, cachePaths[[1]],
                               # userTags = paste0(metadata$tagKey, ":", metadata$tagValue),
                               outputObjects = outputObjects,
@@ -1523,7 +1523,7 @@ loadFromDiskOrMemoise <- function(fromMemoise = FALSE, useCache,
     output <- cacheChainingPost(detailed_key, output,
                                 attr(full_call, ".Cache")[cacheChainingOuterFunctionName],
                                 cachePath, linkToCacheId = NULL, cacheSaveFormat,
-                                .cacheChaining = .cacheChaining, drv, conn)
+                                .cacheChaining = .cacheChaining, drv, conn, verbose = verbose)
 
     return(output)
   }
@@ -1873,7 +1873,8 @@ cacheChainingSetup <- function(.cacheChaining, callList, omitArgs, verbose) {
 }
 
 cacheChainingPost <- function(detailed_key, outputFromEvaluate, cacheChainingOuterFunction,
-                              cachePath, linkToCacheId, cacheSaveFormat, .cacheChaining, drv, conn) {
+                              cachePath, linkToCacheId, cacheSaveFormat, .cacheChaining, drv, conn,
+                              verbose = getOption("reproducible.verbose")) {
   if (!isTRUE(.cacheChaining %in% FALSE)) {
 
     dk <- detailed_key[["preDigest"]]

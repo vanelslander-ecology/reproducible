@@ -167,7 +167,7 @@ prepInputsWithTiles <- function(targetFile, url, destinationPath,
   noTiles <- FALSE
 
   to_inTileGrid <- postProcessTo(to, to = targetObjCRS, verbose = verbose - 2)
-  tileGridAndArea <- makeAndPlotTileGrid(tileGrid, theArea, numTiles, targetObjCRS,
+  tileGridAndArea <- makeAndPlotTileGrid(tileGrid, numTiles, targetObjCRS,
                                          plot.grid, to = to_inTileGrid, verbose)
 
 
@@ -197,7 +197,7 @@ prepInputsWithTiles <- function(targetFile, url, destinationPath,
     haveLocalTiles <- TRUE
   } else {
     messagePreProcess(
-      "⚠️ Tiles are missing locally in:\n",.messageFunctionFn(tilesFolderFullPath),
+      "Tiles are missing locally in:\n",.messageFunctionFn(tilesFolderFullPath),
       "\nWill try to download these:\n", verbose = verbose)
     messagePreProcess(.messageFunctionFn(paste(missingTilesLocal, collapse = ", ")), verbose = verbose)
     messagePreProcess(paste0("... from urlTiles (",.messageFunctionFn(urlTiles),")"), verbose = verbose)
@@ -325,7 +325,7 @@ upload_tiles_to_drive_url_parallel <- function(local_dir, drive_folder_url, this
   if (nrow(subfolder) == 0) {
     subfolder <- googledrive::with_drive_quiet(googledrive::drive_mkdir(subfolder_name,
                                                                         path = googledrive::as_id(parent_id)))
-    messagePreProcess("📁 Created subfolder: ", .messageFunctionFn(subfolder_name), verbose = verbose)
+    messagePreProcess("Created subfolder: ", .messageFunctionFn(subfolder_name), verbose = verbose)
   } else {
     messagePreProcess("Found existing subfolder: ", .messageFunctionFn(subfolder_name), verbose = verbose)
   }
@@ -676,7 +676,7 @@ downloadMakeAndUploadTiles <- function(url, urlTiles, targetFile, targetFileFull
       messagePreProcess("Nothing to download", verbose = verbose)
     }
   } else {
-    messagePreProcess("⚠️ Some tiles are missing on Google Drive:")
+    messagePreProcess("Some tiles are missing on Google Drive:")
     missingOnes <- if (doUploads > 1) missingTilesRemoteAll else missingTilesOnRemote
     if (verbose > 0) message(paste(missingOnes, collapse = ", "))
   }
@@ -1004,17 +1004,19 @@ crsFromLocalOrGDTiles <- function(targetObjCRS, dirTilesFolder, tilesFolderFullP
   targetObjCRS
 }
 
-makeAndPlotTileGrid <- function(tileGrid, theArea, numTiles, targetObjCRS, plot.grid, to, verbose) {
+makeAndPlotTileGrid <- function(tileGrid, numTiles, targetObjCRS, plot.grid, to, verbose) {
   if (is.character(tileGrid)) {
     tg <- makeTileGridFromGADMcode(tileGrid, numTiles, crs = targetObjCRS) |>
       Cache(verbose = verbose - 1)
     tileGrid <- tg$tileGrid
     numTiles <- tg$numTiles
     theArea <- tg$area
+  } else {
+    stop("tileGrid must be a character string")
   }
-  if (missing(theArea)) {
-    theArea <- terra::ext(tileGrid)
-  }
+  # if (missing(theArea)) {
+  #   theArea <- terra::ext(tileGrid)
+  # }
   if (isTRUE(plot.grid) && !missing(to)) {
     plotGridAndArea(tileGrid, theArea, to)
   }

@@ -173,6 +173,11 @@ objSizeSession <- function(sumLevel = Inf, enclosingEnvs = TRUE, .prevEnvirs = l
 #' @export
 #' @importFrom lobstr obj_size
 #' @inheritParams objSize
+#' @params useTry Logical. If `TRUE`, the default, then it will use `try`. Can optionally
+#'   avoid this if set to `FALSE`. The `try` takes sufficient extra compute time
+#'   that it is worth avoiding it if possible.
+#' @return The size of an object, using `lobstr::obj_size` or `object.size` if the
+#'   first fails
 .objSizeWithTry <- function(x, useTry = TRUE) {
   for (i in 1:2) {
     if (isTRUE(useTry)) {
