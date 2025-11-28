@@ -800,7 +800,7 @@ makeRemoteHashFile <- function(url, destinationPath, targetFile, remoteHash, wri
 checkHaveCorrectHashedVersion <- function(remoteHashFile, remoteHash, purge, verbose) {
   haveCorrectVersion <- FALSE
   fe <- file.exists(remoteHashFile)
-  if (fe)
+  if (isTRUE(fe))
     haveCorrectVersion <- identical(readLines(remoteHashFile), remoteHash)
   if (isTRUE(fe)) {
     if (haveCorrectVersion %in% FALSE) {
