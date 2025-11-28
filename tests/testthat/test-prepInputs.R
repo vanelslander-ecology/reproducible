@@ -492,7 +492,7 @@ test_that("preProcess doesn't work", {
             expectedMess = expectedMessage,
             filePattern = "Shapefile", tmpdir = tmpdir, test = test
     )
-    unlink(dir(tmpdir, full.names = TRUE))
+    unlink(dir(tmpdir, full.names = TRUE), recursive = TRUE)
 
     # # # # # Comment
     # # # url, archive
@@ -503,7 +503,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           destinationPath = tmpdir
         )
       })
@@ -518,7 +518,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           destinationPath = tmpdir
         )
       })
@@ -639,7 +639,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = "similar",
           destinationPath = tmpdir
         )
@@ -655,7 +655,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = "similar",
           destinationPath = tmpdir
         )
@@ -673,7 +673,7 @@ test_that("preProcess doesn't work", {
         warns <- capture_warnings({
           test <- prepInputs(
             url = urlShapefilesZip,
-            archive = "Shapefiles1.zip",
+            archive = "Shapefiles.zip",
             alsoExtract = c("Shapefile1.dbf", "Shapefile1.prj", "Shapefile1.shx"),
             destinationPath = tmpdir
           )
@@ -758,7 +758,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = "similar",
           targetFile = "Shapefile1.shp",
           destinationPath = tmpdir
@@ -775,7 +775,7 @@ test_that("preProcess doesn't work", {
       warns <- capture_warnings({
         test <- prepInputs(
           url = urlShapefilesZip,
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = "similar",
           targetFile = "Shapefile1.shp",
           destinationPath = tmpdir
@@ -801,7 +801,7 @@ test_that("preProcess doesn't work", {
 
     mess <- capture_messages({
       warns <- capture_warnings({
-        test <- prepInputs(archive = "Shapefiles1.zip", destinationPath = tmpdir)
+        test <- prepInputs(archive = "Shapefiles.zip", destinationPath = tmpdir)
       })
     })
 
@@ -813,7 +813,7 @@ test_that("preProcess doesn't work", {
     # 2nd time # can checksums
     mess <- capture_messages({
       warns <- capture_warnings({
-        test <- prepInputs(archive = "Shapefiles1.zip", destinationPath = tmpdir)
+        test <- prepInputs(archive = "Shapefiles.zip", destinationPath = tmpdir)
       })
     })
     runTest("1_9_10", vectorType(), 9, mess,
@@ -833,10 +833,11 @@ test_that("preProcess doesn't work", {
       value = TRUE
     ))
 
+    # aaaa <<- 1; on.exit(rm(aaaa, envir = .GlobalEnv))
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           destinationPath = tmpdir
         )
@@ -851,7 +852,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           destinationPath = tmpdir
         )
@@ -876,7 +877,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = c("Shapefile1.dbf", "Shapefile1.prj", "Shapefile1.shp", "Shapefile1.shx"),
           destinationPath = tmpdir
@@ -892,7 +893,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = c("Shapefile1.dbf", "Shapefile1.prj", "Shapefile1.shp", "Shapefile1.shx"),
           destinationPath = tmpdir
@@ -918,7 +919,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = "similar",
           destinationPath = tmpdir
@@ -934,7 +935,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = c("similar"),
           destinationPath = tmpdir
@@ -1040,7 +1041,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = c("Shapefile1.dbf", "Shapefile1.prj", "Shapefile1.shp", "Shapefile1.shx"),
           destinationPath = tmpdir
         )
@@ -1055,7 +1056,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           alsoExtract = c("Shapefile1.dbf", "Shapefile1.prj", "Shapefile1.shp", "Shapefile1.shx"),
           destinationPath = tmpdir
         )
@@ -1099,7 +1100,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = "similar",
           destinationPath = tmpdir
@@ -1115,7 +1116,7 @@ test_that("preProcess doesn't work", {
     mess <- capture_messages({
       warns <- capture_warnings({
         test <- prepInputs(
-          archive = "Shapefiles1.zip",
+          archive = "Shapefiles.zip",
           targetFile = "Shapefile1.shp",
           alsoExtract = c("similar"),
           destinationPath = tmpdir

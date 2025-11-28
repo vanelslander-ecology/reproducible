@@ -4,7 +4,7 @@
 \alias{.objSizeWithTry}
 \title{\code{lobstr::obj_size} with a \code{try} to address issue #72}
 \usage{
-.objSizeWithTry(x)
+.objSizeWithTry(x, useTry = TRUE)
 }
 \arguments{
 \item{x}{An object}

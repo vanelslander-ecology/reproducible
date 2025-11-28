@@ -2083,7 +2083,7 @@ test_that("cacheChaining", {
         # index <- index + 1L
         withr::local_seed(123)
         iChar <- as.character(index)
-        options(reproducible.cacheChaining = i)
+        withr::local_options(reproducible.cacheChaining = i)
         fn1 <- function(x) {
           a <- sample(N) |> Cache()
           # if (exists("aaaa", envir = .GlobalEnv)) browser()

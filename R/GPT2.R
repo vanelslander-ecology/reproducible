@@ -1774,7 +1774,7 @@ createSimilar <- function(similar, .functionName, verbose, devMode) {
 stopRcppError <- function(toDigest, .objects, length, algo, quick, classOptions) {
   ooo <- Map(obj = names(toDigest), function(obj)
     try(.robustDigest(toDigest[[obj]], .objects = .objects,
-                      length, algo, quick, classOptions)), silent = TRUE)
+                      length, algo, quick, classOptions), silent = TRUE))
   ite <- Map(o = ooo, function(o) {
     is(o, "try-error")
   })
