@@ -8,6 +8,14 @@
 }
 \arguments{
 \item{x}{An object}
+
+\item{useTry}{Logical. If \code{TRUE}, the default, then it will use \code{try}. Can optionally
+avoid this if set to \code{FALSE}. The \code{try} takes sufficient extra compute time
+that it is worth avoiding it if possible.}
+}
+\value{
+The size of an object, using \code{lobstr::obj_size} or \code{object.size} if the
+first fails
 }
 \description{
 It is not clear why, but it appears that running \code{lobstr::obj_size} again, after
