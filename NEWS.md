@@ -1,7 +1,19 @@
 # reproducible 3.0.0
 
-* `prepInputs` can now pass through a different sub-function, `prepInputsWithTiles`, which can
-  deal with remote files that are tiled. See `?prepInputsWithTiles`
+* near complete rewrite of `Cache` so it is simpler and more robust. The main function is now 200 
+  lines, instead of almost 700;
+* In addition to full rewrites, numerous simplifications throughout code that is still being used;
+* There are sufficient changes to the digesting that a user's Cache repository will likely
+  be all or mostly rerun with these package changes. These changes to digesting were required
+  because of incomplete cases that were being missed (i.e., false positive or false negatives). See
+  more details below;
+* many internal changes in the `postProcess` pipeline where `terra` functions are used. Now all
+  functions are memory-safe, so will not bring the data to memory;
+* `Cache` previously would bring some objects to memory that don't need to, e.g., `SpatRaster` from
+  `terra`. These are now left on disk, as part of the `Cache` pipeline;
+* `prepInputsWithTiles`: new function. `prepInputs` can now pass through a different sub-function, 
+  `prepInputsWithTiles`, which can deal with (i.e., upload and download) remote files that 
+  are tiled. See `?prepInputsWithTiles`;
 * new experimental feature: `cacheChaining`; in cases where there are >1 `Cache` call within a single 
   function, the `cacheChaining` will `digest` the containing function (via `sys.function(-1)`)
   to determine whether it is stable between calls. If it is unchanged, then a series of 
@@ -12,14 +24,11 @@
   takes a long time;
 * drop support for R 4.1 and 4.2;
 * attribute that was named "call" has been changed to "callInCache" to avoid newly 
-  discovered collision with xgboost package that uses that attribute name
-* minor bugfixes
+  discovered collision with xgboost package that uses that attribute name;
+* many minor bugfixes;
 * `format` replaces `cacheSaveFormat` as an argument so individual Cache calls can switch backend;
   this can be useful when e.g., `qs` (which tends to be faster and smaller files) does not work
   for all types of objects e.g., `xgboost`.
-* near complete rewrite of `Cache` so it is simpler and more robust. 
-The main function is now 130 lines, instead of almost 700. 
-* In addition to full rewrites, numerous simplifications throughout code that is still being used;
 * `CacheGeo` added new cases that are able to be used.
 * many edge cases were found that were not correctly Cached. This resulted in 2 major changes: 
   - rewrite and simplification of `Cache`;
