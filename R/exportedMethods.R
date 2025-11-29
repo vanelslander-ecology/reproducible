@@ -1019,12 +1019,12 @@ unmakeMemoisable.default <- function(x) {
 
     attr(obj, "tags") <- atts$tags
     obj <- .setSubAttrInList(obj, ".Cache", "newCache", atts$.Cache$newCache)
-    attr(obj, callInCache) <- atts$call
+    attr(obj, callInCache) <- atts$callInCache
 
     if (!identical(attr(obj, ".Cache")$newCache, atts$.Cache$newCache)) {
       stop("attributes are not correct 6")
     }
-    if (!identical(attr(obj, callInCache), atts$call)) {
+    if (!identical(attr(obj, callInCache), atts$callInCache)) {
       stop("attributes are not correct 7")
     }
     if (!identical(attr(obj, "tags"), atts$tags)) {
