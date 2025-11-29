@@ -224,7 +224,10 @@ messageColoured <- function(..., colour = NULL, indent = NULL, hangingIndent = T
           indentNum <- cli::ansi_nchar(indent)
       if (is.null(indent)) indentNum <- 0
 
+      # browser()
+      # mess <- ansi_trimws_pureR(mess, "both")
       mess <- cli::ansi_trimws(mess, which = c("both"))
+      # if (!all(mess2 == mess)) browser()
       if (any(grepl(.spaceTmpChar, mess)))
         mess <- gsub(.spaceTmpChar, " ", mess)
       hasSlashN <- any(grepl("\n", mess)) # faster than gregexpr that needs to count in the string
@@ -274,7 +277,6 @@ messageColoured <- function(..., colour = NULL, indent = NULL, hangingIndent = T
             messBuild <- character()
             while (remainingChars > maxLineLngth) {
               whNewLine <- which(cumsum(nchar(messSplit[[1]]) + 1) >= maxLineLngth)[1] - 1
-              # if (isTRUE(any(grepl("...because of", mess)))) browser()
               if (anyNA(whNewLine)) browser()
 
               keepInd <- 1:whNewLine
@@ -501,6 +503,16 @@ cliCol <- function(col) {
     col <- paste0("col_", col)
   getFromNamespace(col, asNamespace("cli"))
 }
+# cliCol <- function(col) {
+#   if (!startsWith(col, "col_")) {
+#     repNS <- asNamespace("reproducible")
+#     if (exists(col, envir = repNS))
+#       return(get(col, envir = repNS))
+#     col <- paste0("col_", col)
+#   }
+#   getFromNamespace(col, asNamespace("cli"))
+#
+# }
 
 paddDFInitial <- function(outMess, rows = 1:2, .spaceTmpChar, colour) {
   for (r in rows) {
@@ -546,3 +558,46 @@ isAre <- function (l, v) {
 .message$dashes <- "----------------------"
 
 .message$NoPrefix <- "._noPrefix"
+
+# colr <- function(..., digit = 32) paste0("\033[", digit, "m", paste0(...), "\033[39m")
+# purple <- function(...) colr(..., digit = "38;5;129m")
+# black <- function(...) colr(..., digit = 30)
+# green2 <- function(...) colr(..., digit = 38)
+# cyan <- function(...) colr(..., digit = 29)
+# red <- function(...) colr(..., digit = 31)
+# green <- function(...) colr(..., digit = 32)
+# yellow <- function(...) colr(..., digit = 33)
+# blue <- function(...) colr(..., digit = 34)
+# turquoise <- function(...) colr(..., digit = 36)
+# greyLight <- function(...) colr(..., digit = 90)
+
+
+# cli::ansi_trimws is too slow. This is a copilot rewrite
+# ansi_trimws_pureR <- function(x, which = c("both", "left", "right")) {
+#   if (!is.character(x)) x <- as.character(x)
+#   which <- match.arg(which)
+#
+#   # Ensure UTF-8
+#   x <- enc2utf8(x)
+#   if (!length(x)) return(x)
+#
+#   # Regex to remove ANSI escape sequences
+#   ansi_regex <- "\033\\[[0-9;]*[A-Za-z]"
+#
+#   # Strip ANSI for whitespace detection
+#   xs <- gsub(ansi_regex, "", x, perl = TRUE)
+#   nxs <- nchar(xs)
+#
+#   # Compute left/right trims
+#   sl <- if (which %in% c("both", "left")) nxs - nchar(sub("^\\s+", "", xs)) else integer(length(x))
+#   rl <- if (which %in% c("both", "right")) nxs - nchar(sub("\\s+$", "", xs)) else integer(length(x))
+#
+#   # Vectorized substring
+#   if (any(sl > 0L | rl > 0L)) {
+#     start <- 1L + sl
+#     end <- nchar(x) - rl
+#     x <- substring(x, start, end)
+#   }
+#
+#   x
+# }

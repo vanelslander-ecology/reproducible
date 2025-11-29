@@ -374,12 +374,19 @@ dlGoogle <- function(url, archive = NULL, targetFile = NULL,
       }
     }
     if (!is.null(fs)) {
+      if (!is.numeric(fs))
+        fs <- as.numeric(fs)
       class(fs) <- "object_size"
     }
     isLargeFile <- ifelse(is.null(fs), FALSE, fs > 1e6)
 
     # download_with_speed(url, local_path = destFile)
-    downloadCall <- quote(download_resumable_httr2(url, local_path = destFile))
+    downloadCall <-
+      quote(
+        download_resumable_httr2(
+          url, local_path = destFile,
+          gdriveDetails = list(id = googledrive::as_id(url),
+                               drive_resource = attr(downloadFilename, "drive_resource"))))
     # downloadCall <- quote(drive_downloadWProgress(url, local_path = destFile))
     # downloadCall <- quote(
     #   googledrive::drive_download(
@@ -913,51 +920,60 @@ assessGoogle <- function(url, archive = NULL, targetFile = NULL,
     on.exit(options(opts))
   }
 
-  if (is.null(archive) || is.na(archive)) {
+  # if (is.null(archive) || is.na(archive)) {
+  if (isTRUE(isDirectory(url, FALSE))) {
+    if (packageVersion("googledrive") < "2.0.0") {
+      fileAttr <- retry(retries = 1, quote(googledrive::drive_ls(googledrive::as_id(url),
+                                                                  shared_drive = team_drive
+      )))
+    } else {
+      fileAttr <- retry(retries = 1, quote(googledrive::drive_ls(googledrive::as_id(url),
+                                                                 shared_drive = team_drive
+      )))
+    }
+  } else {
     if (packageVersion("googledrive") < "2.0.0") {
       fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
                                                                   team_drive = team_drive
       )))
     } else {
-      if (isTRUE(isDirectory(url, FALSE))) {
-        fileAttr <- retry(retries = 1, quote(googledrive::drive_ls(googledrive::as_id(url),
-                                                                    shared_drive = team_drive
-        )))
-      } else {
-        fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
-                                                                    shared_drive = team_drive
-        )))
-      }
+
+      fileAttr <- retry(retries = 1, quote(googledrive::drive_get(googledrive::as_id(url),
+                                                                  shared_drive = team_drive
+      )))
     }
-    fileSize <- sapply(fileAttr$drive_resource, function(x) x$size)
-    if (!is.null(unlist(fileSize))) {
-      messageAboutFilesize(fileSize, verbose)
-      # fileSize <- as.numeric(fileSize)
-      # len <- length(fileSize)
-      # if (len > 1)
-      #   fileSize <- sum(fileSize)
-      # class(fileSize) <- "object_size"
-      # Fils <- singularPlural(c("File", "Files"), v = len)
-      # isAre <- isAre(v = len)
-      # messagePreProcess(Fils, " on Google Drive ", isAre, " ", format(fileSize, units = "auto"),
-      #                   verbose = verbose
-      # )
+
+  }
+
+  fileSize <- sapply(fileAttr$drive_resource, function(x) x$size)
+  if (!is.null(unlist(fileSize))) {
+    messageAboutFilesize(fileSize, verbose)
+    # fileSize <- as.numeric(fileSize)
+    # len <- length(fileSize)
+    # if (len > 1)
+    #   fileSize <- sum(fileSize)
+    # class(fileSize) <- "object_size"
+    # Fils <- singularPlural(c("File", "Files"), v = len)
+    # isAre <- isAre(v = len)
+    # messagePreProcess(Fils, " on Google Drive ", isAre, " ", format(fileSize, units = "auto"),
+    #                   verbose = verbose
+    # )
+  }
+  archive <- .isArchive(fileAttr$name)
+  if (is.null(archive)) {
+    if (is.null(targetFile)) {
+      # make the guess
+      targetFile <- fileAttr$name
     }
-    archive <- .isArchive(fileAttr$name)
-    if (is.null(archive)) {
-      if (is.null(targetFile)) {
-        # make the guess
-        targetFile <- fileAttr$name
-      }
-      downloadFilename <- targetFile # override if the targetFile is not an archive
-    } else {
-      archive <- file.path(destinationPath, basename2(archive))
-      downloadFilename <- archive
-    }
-    attr(downloadFilename, "drive_resource") <- fileAttr$drive_resource
+    downloadFilename <- targetFile # override if the targetFile is not an archive
   } else {
+    archive <- file.path(destinationPath, basename2(archive))
     downloadFilename <- archive
   }
+  attr(downloadFilename, "drive_resource") <- fileAttr$drive_resource
+  # } else {
+  #   downloadFilename <- archive
+  # }
   if (exists("fileSize", inherits = FALSE)) {
     attr(downloadFilename, "fileSize") <- fileSize
   }

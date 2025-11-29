@@ -247,6 +247,22 @@ utils::globalVariables(c(
 #'       when `options("reproducible.showSimilar" = TRUE)`. This can allow a user
 #'       more control and understanding for debugging.
 #'
+#' @param .cacheChaining A logical or a the name of a function. If `TRUE`, then
+#'   the current `Cache` call will evaluate the function "outside" the `Cache` call
+#'   (via `sys.function(-1)`) and
+#'   attach the `digest` of that outer function to the entry for this `Cache` call. This
+#'   will then be used by any subsequent `Cache` call within the same function.
+#'   If the outer function is unchanged, and there is one or more objects that had
+#'   been returned by a previous `Cache` call,
+#'   then those objects will not be digested; rather their `cacheId` tag will be used
+#'   in place of a new `digest`. This *should* cause no change in Caching outcomes,
+#'   and it should be faster in cases where there are several `Cache` calls within
+#'   the same function. If `FALSE` (current default), then this feature is
+#'   not used. If set to `NULL` (i.e., unset, the current default), then it will
+#'   not use cache chaining, but it will attach more information to the Cache entries
+#'   for each `cacheId`, as well as new entries for `"surroundingFunction"` digest,
+#'   so that if a user switches to `.cacheChaining = TRUE`, then it will be able
+#'   to begin using cache chaining without needing to rerun the calls again. Can be set by an `option`.
 #' @param .functionName A an arbitrary character string that provides a name that is different
 #'       than the actual function name (e.g., "rnorm") which will be used for messaging. This
 #'       can be useful when the actual function is not helpful for a user, such as `do.call`.
@@ -642,6 +658,7 @@ CacheV2 <-
 
       # If user passes cacheId, including cacheId = "previous"
       if (!is.null(cacheId)) {
+        browser()
         sc <- cacheIdCheckInCache(cacheId, calculatedCacheId = outputHash, .functionName, verbose)
         outputHashPossible <- attr(sc, "cacheId")
         if (!is.null(outputHashPossible)) outputHash <- outputHashPossible
@@ -1167,7 +1184,7 @@ findFun <- function(FUNcaptured, envir) {
 
 isDollarSqBrPkgColon <- function(args) {
   ret <- FALSE
-  if (length(args) == 3) { # i.e., only possible if it is just b$fun or stats::runif, not stats::runif(1) or b$fun(1)
+  if (length(args) == 3 || length(args) == 1) { # i.e., only possible if it is just b$fun or stats::runif, not stats::runif(1) or b$fun(1)
     # ret <- isDollarOnlySqBr(args) | isPkgColon(args)
     ret <- isTRUE(any(try(grepl("^\\$|\\[|\\:\\:", args)[1], silent = TRUE)))
   }
@@ -1207,6 +1224,9 @@ recursiveEvalNamesOnly <- function(args, envir = parent.frame(), outer = TRUE, r
       isStandAlone <- isDollarSqBrPkgColon(args[[1]])
     }
 
+    if (identical(quote(`function`), args[[1]])) # if it is function definition, then leave the inside unevaluated
+      isStandAlone <- TRUE
+
     if (identical(as.name("<-"), args[[1]])) {
       args <- as.list(args[-(1:2)])[[1]]
     }
@@ -1223,7 +1243,7 @@ recursiveEvalNamesOnly <- function(args, envir = parent.frame(), outer = TRUE, r
       out <- lapply(args, function(xxxx) {
         if (is.name(xxxx)) {
           # exists(xxxx, envir = envir, inherits = FALSE)
-          if (exists(xxxx, envir)) { # looks like variables that are in ... in the `envir` are not found; would need whereInStack
+          if (exists(xxxx, envir)) { # looks like variables that are in ... in the `envir` are not found; would need .whereInStack
             evd <- try(eval(xxxx, envir), silent = TRUE)
             isPrim <- is.primitive(evd)
             if (isPrim) {
@@ -1495,11 +1515,12 @@ getFunctionName2 <- function(mc) {
       mc <- mc[-(1:2)]
     }
     coloncolon <- .grepSysCalls(list(mc), "^\\$|\\[|\\:\\:")
+    coloncoloncolon <- .grepSysCalls(list(mc), "^\\$|\\[|\\:\\:\\:")
     if (length(coloncolon)) { # stats::runif -- has to be first one, not some argument in middle
-      if (length(coloncolon) && length(mc) != 3) { # stats::runif
+      if (length(coloncolon) && length(mc) != 3 || length(coloncoloncolon)) { # stats::runif
 
-    #if (any(grepl("^\\$|\\[|\\:\\:", mc)[1])) { # stats::runif -- has to be first one, not some argument in middle
-    #  if (any(grepl("^\\$|\\[|\\:\\:", mc[[1]])) && length(mc) != 3) { # stats::runif
+        #if (any(grepl("^\\$|\\[|\\:\\:", mc)[1])) { # stats::runif -- has to be first one, not some argument in middle
+        #  if (any(grepl("^\\$|\\[|\\:\\:", mc[[1]])) && length(mc) != 3) { # stats::runif
         fnNameInit <- deparse(mc[[1]])
       } else {
         fnNameInit <- deparse(mc)
@@ -1630,9 +1651,9 @@ getFunctionName2 <- function(mc) {
                 out <- "..."
               } else {
                 env2 <- try(if (isDollarSqBrPkgColon(ee)) {
-                  whereInStack(ee[[2]])
+                  .whereInStack(ee[[2]])
                 } else {
-                  whereInStack(ee)
+                  .whereInStack(ee)
                 }, silent = TRUE)
                 if (is(env2, "try-error")) {
                   out <- try(paste(format(ee$destinationPath), collapse = " "), silent = TRUE)
@@ -1807,7 +1828,8 @@ CacheDigest <- function(objsToDigest, ..., algo = "xxhash64", calledFrom = "Cach
     lengthChars <- nchar(namesOTD)
     if (!any(namesOTD %in% "FUN")) {
       zeroLength <- which(lengthChars == 0)
-      if (sum(zeroLength) > 0) {
+      alreadyHasDotFun <- ".FUN" %in% namesOTD
+      if (sum(zeroLength) > 0 && !alreadyHasDotFun) {
         names(objsToDigest)[zeroLength[1]] <- ".FUN"
       }
     }
@@ -2527,9 +2549,22 @@ returnObjFromRepo <- function(isInRepo, notOlderThan, fullCacheTableForObj, cach
   return(output)
 }
 
-whereInStack <- function(obj, startingEnv = parent.frame()) {
+#' Search for objects in the call stack
+#'
+#' Normally, this is only used in special, advanced uses. The standard approach
+#' to getting an object from an environment in the call stack is to explicitly
+#' pass it into the function.
+#'
+#' @param obj Character string. The object name to search.
+#' @param startingEnv An environment to start searching in.
+#'
+#' @return The environment in which the object exists. It will return the
+#' first environment it finds, searching outwards from where the function is used.
+#' @export
+.whereInStack <- function(obj, startingEnv = parent.frame()) {
   foundStarting <- FALSE
-  for (i in 1:sys.nframe()) {
+  snf <- sys.nframe()
+  for (i in 1:snf) {
     testEnv <- sys.frame(-i)
     if (!foundStarting) {
       if (identical(testEnv, startingEnv)) {
@@ -2547,6 +2582,8 @@ whereInStack <- function(obj, startingEnv = parent.frame()) {
       break
     }
   }
+  if (identical(testEnv, .GlobalEnv) && identical(i, snf))
+    testEnv <- NULL
   return(testEnv)
 }
 
@@ -2637,12 +2674,13 @@ cacheIdCheckInCache <- function(cacheId, calculatedCacheId, .functionName,
       # }
     } else {
       outputHashManual <- cacheId
+      sc <- list(1)
       # calculatedCacheId can be NULL to save time; doesn't calculate the digest
       if (identical(outputHashManual, calculatedCacheId)) {
         messageCache(.message$cacheIdSameTxt, verbose = verbose)
-        sc <- showCache(userTags = cacheId, verbose = verbose -1)
+        # sc <- showCache(userTags = cacheId, verbose = verbose -1)
       } else {
-        sc <- showCache(userTags = sc, verbose = verbose -1)
+        # sc <- showCache(userTags = sc, verbose = verbose -1)
         if (!is.null(calculatedCacheId)) {
           messageCache(.message$cacheIdNotSameTxt(cacheId), verbose = verbose)
           # if (NROW(sc))

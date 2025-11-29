@@ -343,7 +343,7 @@ prepInputs <- function(targetFile = NULL, url = NULL, archive = NULL, alsoExtrac
                        verbose = getOption("reproducible.verbose", 1),
                        ...) {
   .callingEnv <- parent.frame()
-  messagePreProcess("Running `prepInputs`", verbose = verbose, verboseLevel = 0)
+  messagePreProcess("Running ", .messageFunctionFn("prepInputs"), verbose = verbose, verboseLevel = 0)
   .message$IndentUpdate()
   stStart <- Sys.time()
   if (missing(.tempPath)) {
@@ -359,44 +359,50 @@ prepInputs <- function(targetFile = NULL, url = NULL, archive = NULL, alsoExtrac
   prepInputsAssertions(environment())
 
   rpiut <- getOption("reproducible.prepInputsUrlTiles")
-  if (!(isNULLorNA(rpiut) || rpiut %in% FALSE) && !is.null(list(...)$to)) {
+  runNormalPreProcess <- TRUE
+  if (!(isNULLorNA(rpiut) || rpiut %in% FALSE) && (
+    !is.null(list(...)$to) || !is.null(list(...)$cropTo) || !is.null(list(...)$maskTo)
+  )) {
     if (!is.null(url) && isGoogleDriveDirectory(rpiut)) {
       message("Using prepInputsWithTiles because `to` is supplied and \n",
               "options(reproducible.prepInputsUrlTiles) is set to a Google Drive folder")
-      out2 <- prepInputsWithTiles(url = url, destinationPath = destinationPath, purge = purge,
-                                  ...)
-      if (!identical(out2, "NULL"))
-        return(out2)
+      x <- prepInputsWithTiles(url = url, destinationPath = destinationPath, purge = purge,
+                               ...)
     }
+    if (!identical(x, "NULL")) runNormalPreProcess <- FALSE
+
   }
 
-  ##################################################################
-  # preProcess
-  ##################################################################
-  out <- preProcess(
-    targetFile = targetFile,
-    url = url,
-    archive = archive,
-    alsoExtract = alsoExtract,
-    destinationPath = destinationPath,
-    fun = funCaptured,
-    quick = quick,
-    overwrite = overwrite,
-    purge = purge,
-    useCache = useCache,
-    .tempPath = .tempPath,
-    verbose = verbose,
-    .callingEnv = .callingEnv,
-    ...
-  )
+  if (runNormalPreProcess) {
 
-  ##################################################################
-  # Load object to R
-  ##################################################################
-  x <- process(out,
-               funCaptured = funCaptured,
-               useCache = useCache, verbose = verbose, .callingEnv = .callingEnv, ...
-  )
+    ##################################################################
+    # preProcess
+    ##################################################################
+    out <- preProcess(
+      targetFile = targetFile,
+      url = url,
+      archive = archive,
+      alsoExtract = alsoExtract,
+      destinationPath = destinationPath,
+      fun = funCaptured,
+      quick = quick,
+      overwrite = overwrite,
+      purge = purge,
+      useCache = useCache,
+      .tempPath = .tempPath,
+      verbose = verbose,
+      .callingEnv = .callingEnv,
+      ...
+    )
+
+    ##################################################################
+    # Load object to R
+    ##################################################################
+    x <- process(out,
+                 funCaptured = funCaptured,
+                 useCache = useCache, verbose = verbose, .callingEnv = .callingEnv, ...
+    )
+  }
 
   ##################################################################
   # postProcess
@@ -418,7 +424,7 @@ prepInputs <- function(targetFile = NULL, url = NULL, archive = NULL, alsoExtrac
     )
   }
   .message$IndentRevert()
-  stFinal <- reportTime(stStart, mess = "`prepInputs` done; took ", minSeconds = 10)
+  stFinal <- reportTime(stStart, mess = paste0(.messageFunctionFn("prepInputs"), " done; took "), minSeconds = 10)
   # if (getOption("reproducible.savePrepInputsState", FALSE))
   #   savePrepInputsState(url, archive, out, stFinal, sysCalls = sys.calls())
   return(x)
@@ -1447,6 +1453,8 @@ process <- function(out, funCaptured,
   if (isAlreadyQuoted) {
     theFun <- eval(theFun, envir = out)
   }
+  if (is.name(theFun))
+    theFun <- eval(theFun, envir = .callingEnv)
 
   # need to differentiate sf::st_read from sf::st_read(targetFile, TRUE) -- both are calls, both length 3; both have pkgColon
   if (length(theFun) == 3 && isDollarSqBrPkgColon(theFun) && all(lengths(as.list(theFun)) == 1)) {

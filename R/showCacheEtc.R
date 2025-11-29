@@ -223,22 +223,28 @@ setMethod(
       filesToRemove2 <- normPath(file.path(CacheStorageDir(x), basename(filesToRemove2)))
       filesToRemove3 <- dir(CacheStorageDir(x), full.names = TRUE)
 
+      # Way faster to gsub for the cacheId, rather than greps
+      cacheIdsOfTheseFilenames <- gsub("^.*/([0-9a-zA-Z]+)\\..*$", "\\1", filesToRemove3)
+      cacheIdsToRm <- unique(objsDT[["cacheId"]])
+      indicesToRm <- which(cacheIdsOfTheseFilenames %in% cacheIdsToRm)
+      filesToRemove4 <- filesToRemove3[indicesToRm]
+
       # grep can only handle so many -- do in groups
       # filesToRemove3 <- grep(paste(cacheIdsToRm, collapse = "|"), filesToRemove3, value = TRUE)
-      cacheIdsToRm <- unique(objsDT[["cacheId"]])
-      maxNumForGrep <- 20
-      sequen <- seq(cacheIdsToRm)
-      if (length(cacheIdsToRm) > maxNumForGrep) {
-        groups <- cut(sequen, breaks = ceiling(length(cacheIdsToRm) / maxNumForGrep))
-        groups <- split(sequen, groups)
-      } else {
-        groups <- list(sequen)
-      }
-
-      filesToRemove4 <- lapply(groups, function(g) {
-        cis <- cacheIdsToRm[sequen[g]] |> unlist()
-        grep(paste(cis, collapse = "|"), filesToRemove3, value = TRUE)
-      }) |> unlist() |> unname()
+      # maxNumForGrep <- 20
+      # sequen <- seq(cacheIdsToRm)
+      # if (length(cacheIdsToRm) > maxNumForGrep) {
+      #   groups <- cut(sequen, breaks = ceiling(length(cacheIdsToRm) / maxNumForGrep))
+      #   groups <- split(sequen, groups)
+      # } else {
+      #   groups <- list(sequen)
+      # }
+      #
+      # browser()
+      # filesToRemove4 <- lapply(groups, function(g) {
+      #   cis <- cacheIdsToRm[sequen[g]] |> unlist()
+      #   grep(paste(cis, collapse = "|"), filesToRemove3, value = TRUE)
+      # }) |> unlist() |> unname()
 
       filesToRemove <- unique(c(filesToRemove1, filesToRemove2, filesToRemove4))
       # filebackedInRepo <- objsDT[grepl(pattern = "fromDisk", tagKey) &
@@ -257,9 +263,10 @@ setMethod(
         filesToRemove <- unlist(filesToRemove)
         if (isInteractive()) {
           dirLs <- dir(unique(dirname(filesToRemove)), full.names = TRUE)
-          dirLs <- unlist(lapply(basename(filesToRemove), grep, dirLs, value = TRUE))
-          filesToRemove <- unique(c(filesToRemove, dirLs))
-          cacheSize <- sum(cacheSize, file.size(filesToRemove))
+          filesToRemove <- dirLs[which(basename(dirLs)  %in% basename(filesToRemove))]
+          # dirLs <- unlist(lapply(basename(filesToRemove), grep, dirLs, value = TRUE))
+          # filesToRemove <- unique(c(filesToRemove, dirLs))
+          cacheSize <- sum(file.size(filesToRemove))
         }
         # }
       }
@@ -447,11 +454,11 @@ setMethod(
       # periodically, a cache entry is corrupt; this while, tryCatch will remove the corrupt file and restart
       objsDT <- list()
       while(is(objsDT, "list")) {
-        filOutside <- character()
+        # filOutside <- character()
         objsDT <- tryCatch(
           if (!is.null(cacheId)) {
             objsDT <- rbindlist(fill = TRUE, lapply(cacheId, function(fil) {
-              filOutside <<- fil
+              # filOutside <<- fil
               showCacheFast(fil, cachePath = x, # cacheSaveFormat = cacheSaveFormat,
                             drv = drv, conn = conn)
             }))
@@ -468,7 +475,7 @@ setMethod(
             # }
 
             rbindlist(fill = TRUE, lapply(dd, function(fil) {
-              filOutside <<- fil
+              # filOutside <<- fil
               out <- try(loadFile(fil))#, cacheSaveFormat = cacheSaveFormat))
               if (is(out, "try-error")) {
                 cacheId <- gsub(paste0(CacheDBFileSingleExt()), "",
@@ -476,15 +483,15 @@ setMethod(
                 # cacheId <- gsub(paste0(CacheDBFileSingleExt(), "|", cacheSaveFormat), "",
                 #                 basename(fil))
                 filesToRm <- dir(dirname(fil), pattern = cacheId, full.names = TRUE)
-                fileExtIncorrect <- unique(fileExt(filesToRm)) # %in% cacheSaveFormat
-                if (any(fileExtIncorrect)) {
-                  messageCache("The database file was using a different save format; deleting Cache entry for ", cacheId,
-                               verbose = getOption("reproducible.verbose"))
-
-                } else {
+                # fileExtIncorrect <- unique(fileExt(filesToRm)) # %in% .cacheSaveFormats
+                # if (any(fileExtIncorrect)) {
+                #   messageCache("The database file was using a different save format; deleting Cache entry for ", cacheId,
+                #                verbose = getOption("reproducible.verbose"))
+                #
+                # } else {
                   messageCache("The database file was corrupt; deleting Cache entry for ", cacheId,
                                verbose = getOption("reproducible.verbose"))
-                }
+                # }
                 unlink(filesToRm)
               }
               out
@@ -492,7 +499,6 @@ setMethod(
               }))
 
           }# , error = function(e) {
-            # browser()
             #   cacheId <- gsub(paste0(CacheDBFileSingleExt(), "|", cacheSaveFormat), "",
             #                   basename(file))
             #   filesToRm <- dir(dirname(file), pattern = cacheId, full.names = TRUE)
@@ -631,17 +637,21 @@ setMethod(
       messageCache("x not specified; using ", getOption("reproducible.cachePath")[1], verbose = verbose)
       x <- getOption("reproducible.cachePath")[1]
     }
-    args <- append(list(x = x, after = after, before = before, userTags = userTags), list(...))
+    args <- append(list(x = x, after = after, before = before, userTags = userTags),
+                   modifyList(list(...), list(verbose = FALSE)))
 
     objsDTAll <- suppressMessages(showCache(x, verbose = FALSE, sorted = FALSE))
     objsDT <- do.call(showCache, args = args)
     keep <- unique(objsDT[[.cacheTableHashColName()]])
+
     eliminate <- unique(objsDTAll[[.cacheTableHashColName()]][
       !(objsDTAll[[.cacheTableHashColName()]] %in% keep)
     ])
 
     if (length(eliminate)) {
-      clearCache(x, eliminate, verbose = FALSE, regexp = FALSE, ask = ask)
+      clearCache(x, cacheId = eliminate, verbose = FALSE, regexp = FALSE, ask = ask)
+    } else {
+      messageCache("Nothing to remove; keeping all")
     }
     return(objsDT)
   }
@@ -818,7 +828,9 @@ useDBI <- function(set = NULL, verbose = getOption("reproducible.verbose"), defa
     } else {
       "Using non-DBI backend."
     }
-    messageColoured(messSet, verboseLevel = 0, verbose = verbose)
+    if (verbose > -1) {
+      messageColoured(messSet, verboseLevel = 0, verbose = verbose)
+    }
   }
 
   ud
@@ -859,20 +871,25 @@ isTRUEorForce <- function(cond) {
 }
 
 showCacheFast <- function(cacheId, cachePath = getOption("reproducible.cachePath"),
-                          dtFile, # cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
+                          dtFile, strict = TRUE, # cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
                           drv, conn) {
 
   if (missing(dtFile)) {
+    # dtFile <- CacheDBFileSingle(cachePath, cacheId, cacheSaveFormat = "check")
     dtFile <- CacheDBFileSingle(cachePath, cacheId, cacheSaveFormat = "check")
     # dtFile <- dir(CacheStorageDir(cachePath), full.names = TRUE,
     #               pattern = paste0(cacheId, "\\", suffixMultipleDBFiles()))
   }
   fe <- file.exists(dtFile)
-  dtFile <- if (any(fe)) dtFile[fe][1] else character()
-  if (length(dtFile)) {
-    sc <- loadFile(dtFile) # , cacheSaveFormat = cacheSaveFormat)
-  } else {
-    sc <- showCache(cachePath, userTags = cacheId, drv = drv, conn = conn, verbose = FALSE)[cacheId %in% cacheId]
+  sc <- NULL
+  # if (exists("aaaa", envir = .GlobalEnv)) browser()
+  if (fe || isFALSE(strict)) {
+    dtFile <- if (any(fe)) dtFile[fe][1] else character()
+    if (length(dtFile)) {
+      sc <- loadFile(dtFile) # , cacheSaveFormat = cacheSaveFormat)
+    } else {
+      sc <- showCache(cachePath, userTags = cacheId, drv = drv, conn = conn, verbose = FALSE)[cacheId %in% cacheId]
+    }
   }
   sc[]
 }

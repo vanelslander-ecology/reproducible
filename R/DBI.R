@@ -286,7 +286,7 @@ loadFromCache <- function(cachePath = getOption("reproducible.cachePath"),
       #   }
       #
       #   if (length(sameCacheID)) {
-      #     # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      #     # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #     #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #     #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #     #           "existing cache, while using a simList. ",
@@ -501,11 +501,16 @@ dbConnectAll <- function(drv = getDrv(getOption("reproducible.drv", NULL)),
 
       DBI::dbClearResult(rs)
     } else {
-      dt <- data.table(
+      dt <- list(
         "cacheId" = cacheId, "tagKey" = tagKey,
         "tagValue" = tagValue,
         "createdDate" = as.character(Sys.time())
       )
+      # dt <- data.table(
+      #   "cacheId" = cacheId, "tagKey" = tagKey,
+      #   "tagValue" = tagValue,
+      #   "createdDate" = as.character(Sys.time())
+      # )
       dtFile <- CacheDBFileSingle(cachePath = cachePath, cacheId = cacheId, cacheSaveFormat = "check")
       dt2 <- loadFile(dtFile)#, cacheSaveFormat = cacheSaveFormat)
       dt <- rbindlist(list(dt2, dt), fill = TRUE)
@@ -709,7 +714,6 @@ CacheStoredFile <- function(cachePath = getOption("reproducible.cachePath"), cac
   }
 
   filename <- if (is.null(cacheId)) NULL else paste(cacheId, csExtension, sep = ".")
-  # if (is(filename, "try-error")) browser()
 
   if (length(cacheId) > 1) {
     filename <- vapply(filename, nextNumericName, FUN.VALUE = character(1))
@@ -939,10 +943,14 @@ loadFile <- function(file, ...) {
     cacheSaveFormat <- fileExt(file)
   # }
   isQs <- cacheSaveFormat %in% .qsFormat
+  isQs2 <- cacheSaveFormat %in% .qs2Format
 
   if (any(isQs)) {
     .requireNamespace(.qsFormat, stopOnFALSE = TRUE)
     obj <- qs::qread(file = file[isQs], nthreads = getOption("reproducible.nThreads", 1))
+  } else if (any(isQs2)) {
+    .requireNamespace(.qs2Format, stopOnFALSE = TRUE)
+    obj <- qs2::qs_read(file = file[isQs2], nthreads = getOption("reproducible.nThreads", 1))
   } else {
     suppressWarningsSpecific(falseWarnings = "\\'package:stats\\' may not be available when loading",
                              obj <- readRDS(file = file[!isQs])
@@ -954,6 +962,7 @@ loadFile <- function(file, ...) {
 
 saveFilesInCacheFolder <- function(obj, fts, cachePath, cacheId,
                                    cacheSaveFormat = getOption("reproducible.cacheSaveFormat")) {
+
   if (missing(fts)) {
     fts <- CacheStoredFile(cachePath, cacheId = cacheId, obj = obj, cacheSaveFormat = cacheSaveFormat) # adds prefix
   }
@@ -982,7 +991,6 @@ saveFilesInCacheFolder <- function(obj, fts, cachePath, cacheId,
         nthreads = getOption("reproducible.nThreads", 1),
         preset = getOption("reproducible.qsavePreset", "high")
       )
-      # if (is(fs, "try-error")) browser()
       fs1 <- file.size(fts)
       if (!identical(fs, fs1)) {
         if (attempt == 1) {
@@ -993,6 +1001,16 @@ saveFilesInCacheFolder <- function(obj, fts, cachePath, cacheId,
       } else {
         break
       }
+    }
+  } else if (cacheSaveFormat == .qs2Format) {
+    .requireNamespace(.qs2Format, stopOnFALSE = TRUE)
+    for (attempt in 1:2) {
+      fs <- qs2::qs_save(obj,
+                      file = fts,
+                      nthreads = getOption("reproducible.nThreads", 1)
+      )
+      # if (is(fs, "try-error")) browser()
+      fs <- file.size(fts)
     }
   } else {
     suppressWarningsSpecific(falseWarnings = "\\'package:stats\\' may not be available when loading",
@@ -1010,7 +1028,9 @@ CacheDBFileSingle <- function(cachePath, cacheId,
                               cacheSaveFormat = getOption("reproducible.cacheSaveFormat")) {
   fullSuff <- CacheDBFileSingleExt(cacheSaveFormat = cacheSaveFormat)
   if (any(cacheSaveFormat %in% "check")) {
-    cacheSaveFormat <- formatCheck(cachePath, cacheId, cacheSaveFormat = cacheSaveFormat)
+    cacheSaveFormat <- formatCheck(cachePath,
+                                   paste0(cacheId, gsub("\\.$*", "", suffixMultipleDBFiles())),
+                                   cacheSaveFormat = cacheSaveFormat)
     if (!is.null(cacheSaveFormat)) {
       fullSuff <- CacheDBFileSingleExt(cacheSaveFormat)
     }
@@ -1051,8 +1071,8 @@ formatCheck <- function(cachePath, cacheId, cacheSaveFormat = getOption("reprodu
   }
   if (exists("newFormat", inherits = FALSE)) {
     cacheSaveFormat <- newFormat
-  } else if (cacheSaveFormat == "check") {
-    cacheSaveFormat <- cacheSaveFormat#getOption("reproducible.cacheSaveFormat")
+  } else if (cacheSaveFormat == "check") { # means there was no file; possibly deleted inadvertently
+    cacheSaveFormat <- getOption("reproducible.cacheSaveFormat") #getOption("reproducible.cacheSaveFormat")
   }
 
   # altFile <- dir(dirname(CacheStoredFile(cachePath, cacheId)), pattern = cacheId)
@@ -1091,10 +1111,10 @@ convertDBbackendIfIncorrect <- function(cachePath, drv, conn,
                                         cacheSaveFormat = getOption("reproducible.cacheSaveFormat"),
                                         verbose = getOption("reproducible.verbose")) {
   origDrv <- getDrv(drv)
-  origDBI <- useDBI()
-  newDBI <- suppressMessages(useDBI(!origDBI)) # switch to the other
+  origDBI <- useDBI(verbose = -1)
+  newDBI <- useDBI(!origDBI, verbose = -1) # switch to the other
   if (!identical(newDBI, origDBI)) { # if they are same, then DBI is not installed; not point proceeding
-    on.exit(suppressMessages(useDBI(origDBI)))
+    on.exit(suppressMessages(useDBI(origDBI, verbose = -1)))
     drv <- getDrv(drv) # This will return the DBI driver, if it is installed, regardless of drv
     DBFileWrong <- CacheDBFile(cachePath, drv, conn)
     if (file.exists(DBFileWrong)) {
@@ -1198,7 +1218,7 @@ loadFromCacheSwitchFormat <- function(f, verbose, cachePath, fullCacheTableForOb
     # }
 
     if (length(sameCacheID)) {
-      # if (!identical(whereInStack("sim"), .GlobalEnv)) {
+      # if (!identical(.whereInStack("sim"), .GlobalEnv)) {
       #   cacheSaveFormat <- setdiff(c(.rdsFormat, .qsFormat), cacheSaveFormat)
       #   message("User tried to change options('reproducible.cacheSaveFormat') for an ",
       #           "existing cache, while using a simList. ",
@@ -1274,9 +1294,10 @@ dbDisconnectAll <- function(conn) {
 }
 
 
-.cacheSaveFormats <- c("qs", "rds")
-.qsFormat <- grep("qs", .cacheSaveFormats, value = TRUE, ignore.case = TRUE)
-.rdsFormat <- grep("rds", .cacheSaveFormats, value = TRUE, ignore.case = TRUE)
+.cacheSaveFormats <- c("qs", "rds", "qs2")
+.qs2Format <- grep("qs2$", .cacheSaveFormats, value = TRUE, ignore.case = TRUE)
+.qsFormat <- grep("qs$", .cacheSaveFormats, value = TRUE, ignore.case = TRUE)
+.rdsFormat <- grep("rds$", .cacheSaveFormats, value = TRUE, ignore.case = TRUE)
 
 #' Does an object use a pointer?
 #'
