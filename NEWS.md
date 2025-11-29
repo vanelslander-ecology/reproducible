@@ -1,6 +1,8 @@
 # reproducible 3.0.0
 
-* new feature: `cacheChaining`; in cases where there are >1 `Cache` call within a single 
+* `prepInputs` can now pass through a different sub-function, `prepInputsWithTiles`, which can
+  deal with remote files that are tiled. See `?prepInputsWithTiles`
+* new experimental feature: `cacheChaining`; in cases where there are >1 `Cache` call within a single 
   function, the `cacheChaining` will `digest` the containing function (via `sys.function(-1)`)
   to determine whether it is stable between calls. If it is unchanged, then a series of 
   `Cache` calls can be eligible for chaining, meaning where each subsequent `Cache` call 

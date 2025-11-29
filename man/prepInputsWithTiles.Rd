@@ -55,7 +55,8 @@ or an actual \code{SpatVector} object with a grid of polygons}
 arguments passed to \code{writeRaster}, e.g., \code{datatype} (used when writing tiles).}
 }
 \value{
-A \code{SpatRaster} object cropped to the area of interest (\code{to}), composed of the necessary tiles.
+A single, merged \code{SpatRaster} object \code{postProcess}ed to the area of interest (\code{to}),
+composed of the necessary tiles.
 If the post-processed file already exists locally, it will be returned directly.
 }
 \description{
@@ -74,6 +75,12 @@ if the \code{to} is supplied and both \code{url} and \code{urlTiles} are supplie
 \code{urlTiles} can be supplied using the
 \verb{option(reproducible.prepInputsUrlTiles = someGoogleDriveFolderURL}), so the original
 \code{prepInputs} function call can remain unaffected.
+
+This function also uses a different checksumming procedure compared to the normal \code{prepInputs}.
+This function will assess the remote url for a hash. If that hash exists, then
+it will compare it to a local file with \code{targetFile} name, suffixed with \code{.hash}. If the
+two hashes differ (remote and local), then it will be redownloaded; otherwise the local
+one will be returned.
 
 This function is useful for working with large spatial datasets, but where the user
 only requires a "relatively small" section of that dataset. This function will
