@@ -66,7 +66,7 @@ rebuildColors <- function(x, origColors) {
 }
 
 .getColors <- function(object) {
-  if (is(object, "SpatRaster")) {
+  if (.isSpatRaster(object)) {
     cols <- terra::coltab(object)
   } else {
     nams <- names(object)

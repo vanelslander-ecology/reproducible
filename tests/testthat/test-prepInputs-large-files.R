@@ -100,6 +100,6 @@ test_that("Issue 242 masking fail", {
       overwrite = TRUE
     )
   )
-  expect_true(is(sppAbundance, "SpatRaster"))
+  expect_true(.isSpatRaster(sppAbundance))
   expect_true(all.equal(ext(studyAreaRas), ext(sppAbundance)))
 })

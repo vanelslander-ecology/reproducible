@@ -70,20 +70,20 @@ test_that("prepInputs doesn't work (part 3)", {
   b <- c(r1, r2)
   terra::crs(b) <- sf::st_crs(ncSmall)$input
   b1 <- postProcess(b, studyArea = ncSmall, useCache = FALSE)
-  expect_true(inherits(b1, "SpatRaster"))
+  expect_true(.isSpatRaster(b1))
 
   s <- c(r1, r2)
   crs(s) <- crs(nonLatLongProj)
   s1 <- postProcess(s, studyArea = ncSmall, useCache = FALSE)
-  expect_true(inherits(s1, "SpatRaster"))
+  expect_true(.isSpatRaster(s1))
   expect_equal(s1[], b1[], ignore_attr = TRUE)
 
   b <- writeRaster(b, filename = tmpfile[1], overwrite = TRUE)
   b1 <- postProcess(b, studyArea = ncSmall, useCache = FALSE, writeTo = tmpfile[2], overwrite = TRUE)
-  expect_true(inherits(b1, "SpatRaster"))
+  expect_true(.isSpatRaster(b1))
 
   s1 <- postProcess(s, studyArea = ncSmall, useCache = FALSE, writeTo = tmpfile[2], overwrite = TRUE)
-  expect_true(inherits(s1, "SpatRaster"))
+  expect_true(.isSpatRaster(s1))
 
   # Test datatype setting
   dt1 <- "INT2U"
@@ -117,7 +117,7 @@ test_that("prepInputs doesn't work (part 3)", {
   skip_if_not_installed("terra")
   r1 <- terra::rasterize(terra::vect(nc1), r)
   r2 <- postProcess(r1, studyArea = ncSmall, filename2 = NULL)
-  expect_true(is(r2, "SpatRaster"))
+  expect_true(.isSpatRaster(r2))
   expect_true(terra::ncell(r2) < terra::ncell(r1))
   expect_true((terra::xmin(terra::ext(ncSmall)) - terra::xmin(r2)) < terra::res(r2)[1] * 2)
   expect_true((terra::ymin(terra::ext(ncSmall)) - terra::ymin(r2)) < terra::res(r2)[2] * 2)

@@ -1451,7 +1451,7 @@ test_that("lightweight tests for code coverage", {
     ras2 <- terra::rast(terra::ext(0, 5, 0, 5), resolution = 1, vals = 1:25)
     terra::crs(ras2) <- crsToUse
     a <- cropInputs(ras, extentToMatch = terra::ext(ras2), extentCRS = terra::crs(ras2))
-    expect_true(inherits(a, "SpatRaster"))
+    expect_true(.isSpatRaster(a))
 
     ras4 <- terra::rast(terra::ext(7, 11, 7, 11), resolution = 1, vals = 1:16)
     sp4 <- terra::vect(terra::ext(ras4))
@@ -1468,12 +1468,12 @@ test_that("lightweight tests for code coverage", {
     ## Different crs
     ## Because studyArea is a Raster, then it doesn't work correctly
     a <- cropInputs(ras2, studyArea = ras3)
-    expect_true(inherits(a, "SpatRaster"))
+    expect_true(.isSpatRaster(a))
     expect_true(identical(terra::crs(a), terra::crs(ras2)))
 
     # Now rasterToMatch used -- internally reprojects it to x
     a <- cropInputs(ras2, rasterToMatch = ras3)
-    expect_true(inherits(a, "SpatRaster"))
+    expect_true(.isSpatRaster(a))
     expect_true(identical(terra::crs(a), terra::crs(ras2)))
 
     ## fixErrors.default
@@ -1483,11 +1483,11 @@ test_that("lightweight tests for code coverage", {
 
     ## projectInputs.Raster
     a <- projectInputs(ras2, rasterToMatch = ras3, method = "near")
-    expect_true(inherits(a, "SpatRaster"))
+    expect_true(.isSpatRaster(a))
     expect_true(identical(terra::crs(a), terra::crs(ras3)))
 
     a <- projectInputs(ras2, targetCRS = terra::crs(ras3), rasterToMatch = ras3, method = "near")
-    expect_true(inherits(a, "SpatRaster"))
+    expect_true(.isSpatRaster(a))
     expect_true(identical(terra::crs(a), terra::crs(ras3)))
 
     ## warns if bilinear is passed for reprojecting integer

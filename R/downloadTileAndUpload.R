@@ -101,7 +101,7 @@ prepInputsWithTiles <- function(targetFile, url, destinationPath,
   }
   if (missing(to)) # take the first of maskTo or cropTo, which are in the ...
     if (!anyNA(whMaskToCropTo)) to <- ...elt(whMaskToCropTo[1])
-  if (is(to, "SpatRaster"))
+  if (.isSpatRaster(to))
     to <- boundaryPolygon(to)
   dig <- .robustDigest(to)
 

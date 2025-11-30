@@ -65,7 +65,7 @@ objSize.default <- function(x, quick = FALSE, ...) {
       out2 <- objSize(FNs, quick = FALSE)
     }
   }
-  if (inherits(x, "SpatRaster") || inherits(x, "SpatVector")) {
+  if (.isSpat(x)) {
     if (.requireNamespace("terra")) {
       if (inherits(x, "SpatVector")) { # too slow for large SpatVectors
         x <- list(terra::geom(x), terra::values(x))

@@ -147,7 +147,7 @@ setMethod(
       forDig <- unlist(dig)
     } else if (inherits(object, "cluster")) { # can't get this class from parallel via importClass parallel cluster
       forDig <- NULL
-    } else if (inherits(object, "SpatRaster")) {
+    } else if (.isSpatRaster(object)) {
       if (!requireNamespace("terra", quietly = TRUE)) {
         stop("Please install terra package")
       }

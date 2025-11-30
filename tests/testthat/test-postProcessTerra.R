@@ -43,24 +43,24 @@ test_that("testing terra", {
   b <- Cache(fn, list(r, r1), cachePath = tmpCache)
   expect_true(is(b, "list"))
   expect_true(is(b[[1]], "list"))
-  expect_true(is(b[[1]][[1]], "SpatRaster"))
+  expect_true(.isSpatRaster(b[[1]][[1]]))
 
   # Single nest
   b <- Cache(fn, r, cachePath = tmpCache)
   expect_true(is(b, "list"))
-  expect_true(is(b[[1]], "SpatRaster"))
+  expect_true(.isSpatRaster(b[[1]]))
 
   # mixed nest
   b <- Cache(fn, list(r[[1]], r1), cachePath = tmpCache)
   expect_true(is(b, "list"))
-  expect_true(is(b[[1]], "SpatRaster"))
-  expect_true(is(b[[2]][[1]], "SpatRaster"))
+  expect_true(.isSpatRaster(b[[1]]))
+  expect_true(.isSpatRaster(b[[2]][[1]]))
 
   # mix memory and disk
   b <- Cache(fn, list(r[[1]], r1, rmem), cachePath = tmpCache)
   expect_true(is(b, "list"))
-  expect_true(is(b[[1]], "SpatRaster"))
-  expect_true(is(b[[2]][[1]], "SpatRaster"))
+  expect_true(.isSpatRaster(b[[1]]))
+  expect_true(.isSpatRaster(b[[2]][[1]]))
   expect_true(terra::inMemory(b[[3]][[1]]))
   expect_true(!terra::inMemory(b[[2]][[1]]))
   expect_true(!terra::inMemory(b[[1]]))
@@ -244,17 +244,6 @@ test_that("testing terra", {
         expect_error(postProcessTo(as(vOrigsf, "Spatial"), ext1Ra))
       }
     }
-
-    # if (Sys.info()["user"] %in% "emcintir") {
-    #   env <- new.env(parent = emptyenv())
-    #   suppressWarnings(
-    #     b <- lapply(ls(), function(xx) if (isSpat(get(xx))) try(assign(xx, envir = env, terra::wrap(get(xx)))))
-    #   )
-    #   save(list = ls(envir = env), envir = env, file = "~/tmp2.rda")
-    #   # load(file = "~/tmp2.rda")
-    #   # env <- environment()
-    #   # b <- lapply(ls(), function(xx) if (is(get(xx, env), "PackedSpatRaster") || is(get(xx, env), "PackedSpatVector")) try(assign(xx, envir = env, terra::unwrap(get(xx)))))
-    # }
 
     t11 <- postProcessTo(elevRas, vutm)
     expect_true(terra::same.crs(t11, vutm))
@@ -442,10 +431,10 @@ test_that("testing terra", {
       t20MaskedByRas <- maskTo(t20, ras1SmallAll)
       t20ProjectedByRas <- projectTo(t20, ras1SmallAll)
       t20AllByRas <- postProcessTo(t20, ras1SmallAll) # only does terra::rast 1x
-      expect_true(is(t20AllByRas, "SpatRaster"))
-      expect_true(is(t20CroppedByRas, "SpatRaster"))
-      expect_true(is(t20MaskedByRas, "SpatRaster"))
-      expect_true(is(t20ProjectedByRas, "SpatRaster"))
+      expect_true(.isSpatRaster(t20AllByRas))
+      expect_true(.isSpatRaster(t20CroppedByRas))
+      expect_true(.isSpatRaster(t20MaskedByRas))
+      expect_true(.isSpatRaster(t20ProjectedByRas))
       expect_equal(terra::res(t20ProjectedByRas), terra::res(ras1SmallAll))
       expect_equal(terra::res(t20AllByRas), terra::res(ras1SmallAll))
       expect_equal(terra::ext(t20AllByRas), terra::ext(ras1SmallAll))

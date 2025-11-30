@@ -115,7 +115,7 @@ setMethod(
         fns <- NULL
       }
       fns <- allowMultipleFNs(allowMultiple, fns)
-    } else if (inherits(obj, "SpatRaster")) {
+    } else if (.isSpatRaster(obj)) {
       if (!requireNamespace("terra", quietly = TRUE)) {
         stop("Please install terra package")
       }

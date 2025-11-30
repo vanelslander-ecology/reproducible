@@ -1061,7 +1061,7 @@ unmakeMemoisable.default <- function(x) {
     # next is for terra objects --> terra::wrap is ridiculously slow for SpatVector objects; use
     #   custom version in reproducible where here
     useWrap <- TRUE
-    if (inherits(obj, "SpatRaster")) {
+    if (.isSpatRaster(obj)) {
       if (all(nzchar(Filenames(obj)))) {
         useWrap <- FALSE
         obj <- wrapSpatRaster(obj, cachePath, cacheId = cacheId, ...)

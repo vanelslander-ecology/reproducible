@@ -1313,7 +1313,7 @@ usesPointer <- function(x) {
 #' @export
 usesPointer.default <- function(x) {
   xState <- FALSE
-  if (is(x, "SpatRaster"))
+  if (.isSpatRaster(x))
     if (requireNamespace("terra")) {
       xState <- any(terra::inMemory(x))
     }

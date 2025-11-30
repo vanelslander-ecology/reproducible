@@ -385,7 +385,7 @@ isOrHasRaster <- function(obj) {
   } else if (is.list(obj)) {
     lapply(obj, function(x) isOrHasRaster(x))
   } else {
-    is(obj, "Raster") || is(obj, "SpatRaster")
+    is(obj, "Raster") || .isSpatRaster(obj)
   }
   return(rasters)
 }
