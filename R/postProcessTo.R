@@ -324,6 +324,7 @@ postProcessTerra <- postProcessTo
 #' @param x A spatial object.
 #' @export
 #' @rdname isSpatial
+#' @aliases isSpatial
 #' @details
 #' `.isGridded` returns `TRUE` if the object is a `SpatRaster` or `Raster`
 #'

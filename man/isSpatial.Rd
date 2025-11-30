@@ -2,6 +2,7 @@
 % Please edit documentation in R/postProcessTo.R
 \name{.isGridded}
 \alias{.isGridded}
+\alias{isSpatial}
 \alias{.isVector}
 \alias{.isSF}
 \alias{.isSpat}
