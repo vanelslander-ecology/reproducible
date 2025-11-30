@@ -114,14 +114,14 @@ setMethod(
   signature = "ANY",
   definition = function(object, .objects, length, algo, quick, classOptions) {
     # browser(expr = exists("._robustDigest_1"))
-    if (is(object, "quosure")) { # can't get this class from rlang via importClass rlang quosure
+    if (inherits(object, "quosure")) { # can't get this class from rlang via importClass rlang quosure
       if (!requireNamespace("rlang")) stop("Please `install.packages('rlang')`")
       object <- rlang::eval_tidy(object)
     }
 
     if (inherits(object, "Spatial")) {
       object <- .removeCacheAtts(object)
-      if (is(object, "SpatialPoints")) {
+      if (inherits(object, "SpatialPoints")) {
         forDig <- as.data.frame(object)
       } else {
         forDig <- object
@@ -138,14 +138,14 @@ setMethod(
           }
         }
       }
-    } else if (is(object, "Raster")) {
+    } else if (inherits(object, "Raster")) {
       object <- .removeCacheAtts(object)
 
       dig <- suppressWarnings(
         .digestRasterLayer(object, length = length, algo = algo, quick = quick)
       )
       forDig <- unlist(dig)
-    } else if (is(object, "cluster")) { # can't get this class from parallel via importClass parallel cluster
+    } else if (inherits(object, "cluster")) { # can't get this class from parallel via importClass parallel cluster
       forDig <- NULL
     } else if (inherits(object, "SpatRaster")) {
       if (!requireNamespace("terra", quietly = TRUE)) {
@@ -185,7 +185,7 @@ setMethod(
     } else if (inherits(object, "drive_id")) {
       if (.requireNamespace("googledrive")) {
         forDig <- try(googledrive::drive_get(object))
-        if (is(forDig, "try-error")) {
+        if (inherits(forDig, "try-error")) {
           message("Detected that object is a googledrive id; can't access it online; ",
                   "evaluating only the url as character string")
           forDig <- object
@@ -224,6 +224,16 @@ setMethod(
 setMethod(
   ".robustDigest",
   signature = "language",
+  definition = function(object, .objects, length, algo, quick, classOptions) {
+    .robustDigestFormatOnly(object, algo = algo)
+  }
+)
+
+#' @rdname robustDigest
+#' @export
+setMethod(
+  ".robustDigest",
+  signature = "call",
   definition = function(object, .objects, length, algo, quick, classOptions) {
     .robustDigestFormatOnly(object, algo = algo)
   }
@@ -344,15 +354,67 @@ setMethod(
   signature = "list",
   definition = function(object, .objects, length, algo, quick, classOptions) {
     object <- .removeCacheAtts(object)
-    # browser(expr = exists("._robustDigest_2"))
-    if (!is.null(.objects)) object <- object[.objects]
-    lapply(.sortDotsUnderscoreFirst(object), function(x) {
-      .robustDigest(
-        object = x, .objects = .objects,
-        length = length,
-        algo = algo, quick = quick, classOptions = classOptions
-      )
+    object <- rmDotObjects(object, .objects)
+    .objects <- dotObjectsToNULL(object, .objects) # only use it once
+
+    # if (!is.null(.objects)) {
+    #   # This will get "only the top=level" list ... if it matches
+    #   correctList <- intersect(.objects, names(object))
+    #   if (length(correctList) > 0) {
+    #     object <- object[.objects]
+    #     .objects <<- NULL
+    #   }
+    # }
+
+    objsSorted <- .sortDotsUnderscoreFirst(object)
+    addr <- list()
+    seen <- new.env(parent = emptyenv())
+    localAddrs <- Map(o = objsSorted, function(o) lobstr::obj_addr(o))
+
+    # rcae <- getOption(reproducible.CacheAddressEnv)
+    # objsSorted[["._list"]] <- NULL
+    inner <- Map(x = objsSorted, i = seq_along(objsSorted), addr = localAddrs,
+                 function(x, i, addr) {
+
+                   if (!is.null(attr(x, ".Cache")$newCache)) {
+                     x <- .setSubAttrInList(x, ".Cache", "newCache", NULL)
+                     if (!identical(attr(x, ".Cache")$newCache, NULL)) stop("attributes are not correct 1")
+                   }
+
+                   # if (!is.null(rcae)) {
+                   #   if (exists(addr, envir = rcae, inherits = FALSE)) {
+                   #     browser()
+                   #     return(rcae[[addr]])
+                   #
+                   #   }
+                   # }
+
+                   if (exists(addr, envir = seen)) {
+                     return(seen[[addr]])
+                   }
+
+                   withCallingHandlers({
+
+                     result <- .robustDigest(
+                       object = x, .objects = .objects,
+                       length = length,
+                       algo = algo, quick = quick, classOptions = classOptions
+                     )
+                   }, error = function(e) {
+                     nam <- names(objsSorted)
+                     if (!is.null(nam)) {
+                       # messageCache("Error occurred during .robustDigest of ", nam[i], " in ", .functionName)
+                       messageCache("Error occurred during .robustDigest of ", nam[i])
+                     }
+                   })
+                   seen[[addr]] <- result
+
+                   result
+
     })
+    ## have to distinguish a list from an object not in a list
+    # append(list(._list = .doDigest(inner)), inner)
+    inner
   }
 )
 
@@ -392,7 +454,6 @@ setMethod(
   }
 )
 
-
 #' @rdname robustDigest
 #' @export
 setMethod(
@@ -427,10 +488,11 @@ setMethod(
 setMethod(
   ".robustDigest",
   signature = "integer",
-  definition = function(object, .objects, length, algo, quick, classOptions) {
+  definition = function(object, .objects, length, algo, quick, classOptions,
+                        cacheSaveFormat = getOption("reproducible.cacheSaveFormat")) {
     #  Need a specific method for data.frame or else it get "list" method, which is wrong
     object <- .removeCacheAtts(object)
-    if (identical(getOption("reproducible.cacheSaveFormat"), "qs") &&
+    if (identical(cacheSaveFormat, .qsFormat) &&
         identical(getOption("reproducible.cacheSpeed"), "fast")) {
       os <- objSize(object)
       if (os == 680) {
@@ -475,9 +537,13 @@ basenames3 <- function(object, nParentDirs) {
   if (!is.null(attr(x, ".Cache"))) {
     attr(x, ".Cache") <- NULL
   }
-  if (!is.null(attr(x, "call"))) {
-    attr(x, "call") <- NULL
+  if (!is.null(attr(x, callInCache))) {
+    attr(x, callInCache) <- NULL
   }
+  if (!is.null(attr(x, cacheChainingOuterFunctionName))) {
+    attr(x, cacheChainingOuterFunctionName) <- NULL
+  }
+
   x
 }
 
@@ -488,7 +554,7 @@ basenames3 <- function(object, nParentDirs) {
     onDiskRaster <- all(namesFrom %in% c("origRaster", "cacheRaster"))
     isSpatVector <- all(names(from) %in% c("x", "type", "atts", "crs"))
 
-    if ((is(from, "list") || is(from, "environment")) && onDiskRaster %in% FALSE && isSpatVector %in% FALSE) {
+    if ((inherits(from, "list") || inherits(from, "environment")) && onDiskRaster %in% FALSE && isSpatVector %in% FALSE) {
       if (!inherits(to, "GPModel")) { ## can't do this for GPmodel Class
         if (length(from) && length(to)) {
           nams <- grep("^\\.mods$|^\\._", namesFrom, value = TRUE, invert = TRUE)
@@ -501,7 +567,7 @@ basenames3 <- function(object, nParentDirs) {
     }
   }
 
-  for (i in c("tags", ".Cache", "call")) {
+  for (i in c("tags", ".Cache", callInCache)) {
     if (!is.null(attr(from, i))) {
       attr(to, i) <- attr(from, i)
     }
@@ -517,7 +583,8 @@ basenames3 <- function(object, nParentDirs) {
 
 .doDigest <- function(x, algo, length = Inf, file,
                       newAlgo = NULL,
-                      cacheSpeed = getOption("reproducible.cacheSpeed", "slow")) {
+                      cacheSpeed = getOption("reproducible.cacheSpeed", "slow"), ...) {
+  # the ... is just a passthrough so this function doesn't fail if there are other args
   if (missing(algo)) algo <- formals(.robustDigest)$algo
 
   out <- if (!missing(file)) {
@@ -544,3 +611,86 @@ basenames3 <- function(object, nParentDirs) {
   }
   out
 }
+
+rmDotObjects <- function(object, .objects) {
+  if (!is.null(.objects)) {
+    # This will get "only the top=level" list ... if it matches
+    correctList <- intersect(.objects, names(object))
+    if (length(correctList) > 0) {
+      object <- object[.objects]
+      attr(object, ".objects") <- .returnNothing
+    }
+  }
+  object
+}
+
+rmDotObjectsInList <- function(object, .objects) {
+  lapply(object, function(x) {
+    rmDotObjects(x, .objects)
+  })
+}
+
+dotObjectsToNULL <- function(object, .objects) {
+  if (identical(attr(object, ".objects"), .returnNothing))
+    .objects <- NULL # only use it once
+  .objects
+}
+
+dotObjectsToNULLInList <- function(object, .objects) {
+  if (!is.null(.objects)) {
+    for (i in object) {
+      .objects <- dotObjectsToNULL(object, .objects)
+      break
+    }
+  }
+
+  .objects
+}
+
+
+# CacheAddressEnv <- function(envir = .GlobalEnv, create = FALSE, remove = FALSE) {
+#   browser()
+#   env <- NULL
+#   cae <- "CacheAddressEnv"
+#   if (isTRUE(remove)) {
+#     rm(list = cae, envir = .pkgEnv)
+#   } else {
+#     if (exists(cae, envir = .pkgEnv)) {
+#       env <- get(cae, envir = .pkgEnv, inherits = FALSE)
+#     }
+#     if (create %in% TRUE) {
+#       obj <- paste0(".reproducibleCacheAddressEnv")
+#       if (!exists(obj, envir = envir))
+#         assign(obj, new.env(parent = emptyenv()), envir = envir)
+#
+#       if (is.null(.pkgEnv[[cae]]))
+#         assign(cae, new.env(parent = emptyenv()), envir = .pkgEnv)
+#
+#       assign(obj, envir[[obj]], envir = .pkgEnv[[cae]])# <- env
+#     }
+#
+#     if (exists(obj, envir = envir) && is.null(env)) {
+#       env <- get(obj, envir = envir, inherits = FALSE)
+#     }
+#
+#   }
+#   env
+# }
+#
+# reproducible.CacheAddressEnv <- "reproducible.CacheAddressEnv"
+#
+# memoiseEnv <- function(cachePath, envir = .GlobalEnv) {
+#   memPersist <- isTRUE(getOption("reproducible.memoisePersist", NULL))
+#   if (memPersist) {
+#     obj <- paste0(".reproducibleMemoise_", cachePath)
+#     if (!exists(obj, envir = envir))
+#       assign(obj, new.env(parent = emptyenv()), envir = envir)
+#     memEnv <- get(obj, envir = envir, inherits = FALSE)
+#   } else {
+#     if (is.null(.pkgEnv[[cachePath]])) {
+#       .pkgEnv[[cachePath]] <- new.env(parent = emptyenv())
+#     }
+#     memEnv <- .pkgEnv[[cachePath]]
+#   }
+#   memEnv
+# }

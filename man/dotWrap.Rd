@@ -9,6 +9,10 @@
 \alias{.unwrap}
 \alias{.unwrap.environment}
 \alias{.unwrap.list}
+\alias{.unwrap.PackedSpatExtent2}
+\alias{.unwrap.PackedSpatVector2}
+\alias{.unwrap.data.table}
+\alias{.unwrap.PackedSpatVector}
 \title{Deal with class for saving to and loading from Cache or Disk}
 \usage{
 .wrap(
@@ -19,6 +23,7 @@
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
   outputObjects = NULL,
+  cacheId,
   ...
 )
 
@@ -30,6 +35,7 @@
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
   outputObjects = NULL,
+  cacheId,
   ...
 )
 
@@ -41,6 +47,7 @@
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
   outputObjects = NULL,
+  cacheId,
   ...
 )
 
@@ -51,6 +58,8 @@
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
+  outputObjects = NULL,
+  cacheId,
   ...
 )
 
@@ -89,6 +98,42 @@
   conn = getOption("reproducible.conn", NULL),
   ...
 )
+
+\method{.unwrap}{PackedSpatExtent2}(
+  obj,
+  cachePath,
+  cacheId,
+  drv = getDrv(getOption("reproducible.drv", NULL)),
+  conn = getOption("reproducible.conn", NULL),
+  ...
+)
+
+\method{.unwrap}{PackedSpatVector2}(
+  obj,
+  cachePath,
+  cacheId,
+  drv = getDrv(getOption("reproducible.drv", NULL)),
+  conn = getOption("reproducible.conn", NULL),
+  ...
+)
+
+\method{.unwrap}{data.table}(
+  obj,
+  cachePath,
+  cacheId,
+  drv = getDrv(getOption("reproducible.drv", NULL)),
+  conn = getOption("reproducible.conn", NULL),
+  ...
+)
+
+\method{.unwrap}{PackedSpatVector}(
+  obj,
+  cachePath,
+  cacheId,
+  drv = getDrv(getOption("reproducible.drv", NULL)),
+  conn = getOption("reproducible.conn", NULL),
+  ...
+)
 }
 \arguments{
 \item{obj}{Any arbitrary R object.}
@@ -112,9 +157,9 @@ option, e.g., \verb{options('reproducible.verbose' = 0) to reduce to minimal}}
 \item{outputObjects}{Optional character vector indicating which objects to
 return. This is only relevant for list, environment (or similar) objects}
 
-\item{...}{Arguments passed to methods; default does not use anything in \code{...}.}
-
 \item{cacheId}{Used strictly for messaging. This should be the cacheId of the object being recovered.}
+
+\item{...}{Arguments passed to methods; default does not use anything in \code{...}.}
 }
 \value{
 Returns an object that can be saved to disk e.g., via \code{saveRDS}.

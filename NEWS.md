@@ -1,6 +1,66 @@
-# reproducible (development version)
+# reproducible 3.0.0
 
+* near complete rewrite of `Cache` so it is simpler and more robust. The main function is now 200 
+  lines, instead of almost 700;
+* In addition to full rewrites, numerous simplifications throughout code that is still being used;
+* There are sufficient changes to the digesting that a user's Cache repository will likely
+  be all or mostly rerun with these package changes. These changes to digesting were required
+  because of incomplete cases that were being missed (i.e., false positive or false negatives). See
+  more details below;
+* many internal changes in the `postProcess` pipeline where `terra` functions are used. Now all
+  functions are memory-safe, so will not bring the data to memory;
+* `Cache` previously would bring some objects to memory that don't need to, e.g., `SpatRaster` from
+  `terra`. These are now left on disk, as part of the `Cache` pipeline;
+* `prepInputsWithTiles`: new function. `prepInputs` can now pass through a different sub-function, 
+  `prepInputsWithTiles`, which can deal with (i.e., upload and download) remote files that 
+  are tiled. See `?prepInputsWithTiles`;
+* new experimental feature: `cacheChaining`; in cases where there are >1 `Cache` call within a single 
+  function, the `cacheChaining` will `digest` the containing function (via `sys.function(-1)`)
+  to determine whether it is stable between calls. If it is unchanged, then a series of 
+  `Cache` calls can be eligible for chaining, meaning where each subsequent `Cache` call 
+  refrains from digesting an object that was the outcome of a prior `Cache` call, within 
+  the same -- and unchanged from the previous time -- function. This can dramatically 
+  speed up computations when `Cache` needs to digest large objects and the `digest` step
+  takes a long time;
 * drop support for R 4.1 and 4.2;
+* attribute that was named "call" has been changed to "callInCache" to avoid newly 
+  discovered collision with xgboost package that uses that attribute name;
+* many minor bugfixes;
+* `format` replaces `cacheSaveFormat` as an argument so individual Cache calls can switch backend;
+  this can be useful when e.g., `qs` (which tends to be faster and smaller files) does not work
+  for all types of objects e.g., `xgboost`.
+* `CacheGeo` added new cases that are able to be used.
+* many edge cases were found that were not correctly Cached. This resulted in 2 major changes: 
+  - rewrite and simplification of `Cache`;
+  - modified `digest` of the arguments. These changes are not backwards compatible. Details next.
+* Fixes to several ongoing "edge cases" that were difficult to address, mostly 
+focused around deeply nested objects 
+that are file-backed with pointers, such `terra::SpatRaster` class;
+* `digest` changes include the following fixes:
+  - `CacheDigest` which is used within `Cache` did not digest the names of the 
+  list of arguments passed. This did not affect `.robustDigest` of a normal list, which
+  keeps the names intact. 
+  - file-backed objects were not correctly unique in the cache as they did not have
+  the `cacheId` in the filename; now they will have the 
+  `cacheId` prefixed on the file (so they sort alongside the main cache file). This 
+  `cacheId` prefix is removed on recovery from the cache, overwriting 
+  any files with the same name.
+  - extracting the `functionName` from a function had several edge cases did not work; these now work
+* To maintain as much compatibility with an other Cache database, while losing the more accurate digesting, 
+  a user can set `options(reproducible.digestV3 = FALSE)`. This will keep the behaviour where
+  lists are digested without their names for `CacheDigest` and `Cache`. 
+  This will not affect the file-backed objects changes described above, which will ignore this
+  option. 
+* `useMemoise` would work with file-backed objects, but only if the file-backed object 
+did not change after the caching (the pointer to the file was intact, but the file changed). 
+Now, memoising will copy file-backed information from disk
+each time it "retrieves a file-backed object from memory". This will result in slower
+memoising than previously. However, it will be robust to downstream changes to the file.
+* new function `purgeChecksums` to allow user to manually purge a file from CHECKSUMS.txt
+* new options to help with backwards compatibility:
+  - `reproducible.useCacheV3`: default = TRUE to use the new Cache source code
+  - `reproducible.digestV3`: default = TRUE to use the new Cache digest algorithms
+* `maskTo` can now use a `SpatRaster` for the mask
 * minor bugfixes
 
 # reproducible 2.1.2

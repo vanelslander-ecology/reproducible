@@ -20,6 +20,7 @@ preProcess(
   purge = FALSE,
   verbose = getOption("reproducible.verbose", 1),
   .tempPath,
+  .callingEnv = parent.frame(),
   ...
 )
 }
@@ -90,10 +91,9 @@ less robust checking of inputs. See the respective functions.}
 \item{overwrite}{Logical. Should downloading and all the other actions occur
 even if they pass the checksums or the files are all there.}
 
-\item{purge}{Logical or Integer. \code{0/FALSE} (default) keeps existing
-\code{CHECKSUMS.txt} file and
-\code{prepInputs} will write or append to it. \code{1/TRUE} will deleted the entire
-\code{CHECKSUMS.txt} file. Other options, see details.}
+\item{purge}{Logical or Integer. \code{0/FALSE} (default) keeps existing \code{CHECKSUMS.txt} file and
+\code{prepInputs} will write or append to it. \code{1/TRUE} will deleted the entire \code{CHECKSUMS.txt} file.
+Other options, see details.}
 
 \item{verbose}{Numeric, -1 silent (where possible), 0 being very quiet,
 1 showing more messaging, 2 being more messaging, etc.
@@ -103,6 +103,9 @@ option, e.g., \verb{options('reproducible.verbose' = 0) to reduce to minimal}}
 
 \item{.tempPath}{Optional temporary path for internal file intermediate steps.
 Will be cleared \code{on.exit} from this function.}
+
+\item{.callingEnv}{The environment where the function was called from. Used to find
+objects, if necessary.}
 
 \item{...}{Additional arguments passed to
 \code{\link[=postProcess]{postProcess()}} and \code{\link[=Cache]{Cache()}}.

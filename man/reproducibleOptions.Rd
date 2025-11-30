@@ -26,6 +26,9 @@ The following options are likely of interest to most users:
 \item{\code{ask}}{
 Default: \code{TRUE}. Used in \code{\link[=clearCache]{clearCache()}} and \code{\link[=keepCache]{keepCache()}}.
 }
+\item{\code{cacheChaining}}{
+Default: \code{FALSE}. Used in \code{\link[=Cache]{Cache()}} in the \code{.cacheChaining} argument.
+}
 \item{\code{cachePath}}{
 Default: \code{.reproducibleTempCacheDir}. Used in \code{\link[=Cache]{Cache()}} and many others.
 The default path for repositories if not passed as an argument.
@@ -52,6 +55,9 @@ Can be set globally here.
 \item{\code{drv}}{
 Default: \code{RSQLite::SQLite()}. Sets the default driver for the backend database system.
 Only tested with \code{RSQLite::SQLite()} and \code{RPostgres::Postgres()}.
+}
+\item{dryRun}{
+Default: \code{FALSE}.
 }
 \item{\code{futurePlan}}{
 Default: \code{FALSE}. On Linux OSes, \code{Cache} and \code{cloudCache} have some
@@ -165,6 +171,12 @@ entry in the \code{cachePath}, then this option will default back to the non-dev
 behaviour to avoid deleting objects.
 This, therefore, is most useful if the user is using unique values for \code{userTags}.
 }
+\item{\code{reproducible.useCacheV3}}{
+Default: \code{TRUE}. If this is set to \code{FALSE}, it will use the old \code{Cache} source
+code. This will only be available for a short period before it is deleted
+from the package. See also \code{reproducible.digestV3}. It is not guaranteed to
+be identical to using a previous version of \verb{reproducible (<3.0)}.
+}
 \item{\code{useCloud}}{
 Default \code{FALSE}. Passed to \code{Cache}.
 }
@@ -216,6 +228,15 @@ them and also the time it took to run the call and save the call to the cache re
 load the cached copy from the repository.
 This may help diagnosing some problems that may occur.
 }
+\item{\code{digestV3}}{
+Default: \code{TRUE}. This uses a digest approach that includes the names of
+list elements and several other tweaks that were created for \verb{reproducible 3.x}.
+Set this to \code{FALSE} to use \emph{some of} the previous cache digesting to
+achieve some backwards compatibility with the digest algorithms of \verb{reproducible (<3.x)}.
+It will not be possible to get it exact for all classes of objects, particularly
+those with file-backing.
+}
+
 }
 }
 \section{Advanced}{
