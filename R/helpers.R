@@ -566,13 +566,22 @@ vectorType <- function(vectorRead = getOption("reproducible.shapefileRead", "sf:
     }
   }
   if (!is.character(vectorRead)) {
-    vectorRead <- if (identical(vectorRead, terra::vect)) {
+    isTerra <- try(.requireNamespace("terra"), silent = TRUE)
+    isTerra2 <- if (isTRUE(isTerra)) identical(vectorRead, terra::vect) else FALSE
+    isSF <- try(.requireNamespace("sf"), silent = TRUE)
+    isSF2 <- if (isTRUE(isSF)) identical(vectorRead, sf::st_read) else FALSE
+
+    vectorRead <- if (isTerra2) {
+      if (isTerra %in% FALSE) .requireNamespace("terra", stopOnFALSE = TRUE)
       "SpatVector"
     } else if (needRasterPkg) {
       .requireNamespace("raster", stopOnFALSE = TRUE)
       "SpatialPolygons"
-    } else {
+    } else if (isTRUE(isSF2)) {
+      if (isSF %in% FALSE) .requireNamespace("sf", stopOnFALSE = TRUE)
       "sf"
+    } else {
+      stop("No vector read options available (")
     }
   }
   vectorRead
