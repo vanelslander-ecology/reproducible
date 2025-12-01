@@ -10,7 +10,7 @@ attributesReassign <- function(atts, obj) {
   obj
 }
 
-knownAtts <- c("cpp", "class", "attributes", "values", "definition", "pnt", "ptr")
+knownAtts <- c("cpp", "class", "attributes", "values", "definition", "pnt", "ptr", "pntr")
 
 ## non-exported tag stuff -------------------------------------------------------
 
