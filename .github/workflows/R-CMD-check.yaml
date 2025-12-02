@@ -35,6 +35,7 @@ jobs:
       _R_CHECK_DEPENDS_ONLY_: ${{ matrix.config.nosuggests }}
       _SP_EVOLUTION_STATUS_: 2
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      GOOGLE_AUTH: ${{ secrets.GOOGLE_AUTH }}
       R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
       R_REPRODUCIBLE_RUN_ALL_EXAMPLES: true
       R_REPRODUCIBLE_RUN_ALL_TESTS: true
